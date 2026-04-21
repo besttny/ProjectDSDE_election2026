@@ -54,6 +54,10 @@ class PaddleOCREngine:
             "use_textline_orientation": options.get("use_textline_orientation", False),
         }
         for key in [
+            "device",
+            "enable_hpi",
+            "use_tensorrt",
+            "precision",
             "text_detection_model_name",
             "text_recognition_model_name",
             "text_det_limit_side_len",

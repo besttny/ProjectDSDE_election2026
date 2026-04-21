@@ -28,6 +28,24 @@ That notebook mounts Drive, installs a PaddleOCR-only environment, extracts
 `raw_pdfs.zip`, runs manifest batches `1-35`, rebuilds reports, and exports the
 artifact zip back to Drive.
 
+For the current accuracy-first A100 run, keep these notebook defaults:
+
+```python
+USE_LOCAL_SCRATCH = True
+START_FRESH = True
+SPEED_PROFILE = "accuracy"
+OVERWRITE = False
+RUN_REPORTS_AFTER_EACH_BATCH = False
+CHECKPOINT_EACH_BATCH = False
+```
+
+`accuracy` uses `dpi=300`, `device=gpu:0`, `enable_hpi=True`,
+`precision=fp32`, `text_det_limit_side_len=1920`, and full zone OCR
+(`metadata`, `summary`, and `table`). Speed still comes from Colab local
+scratch storage and building reports only once at the end. If the runtime is
+unstable, set `CHECKPOINT_EACH_BATCH = True`; it is slower but writes
+`ocr_checkpoint_latest.zip` for the next run.
+
 ## 2. Install Dependencies
 
 In Colab:

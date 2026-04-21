@@ -134,9 +134,14 @@ batch OCR so Colab can resume after runtime resets without starting over.
 7. Copy those folders back into this repo locally, then run
    `python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr`.
 
-The default OCR config is tuned for Colab accuracy: `dpi: 250`, PaddleOCR Thai
-recognition, `text_det_limit_side_len: 1280`, and automatic zone OCR. If Colab
+The default OCR config is tuned for Colab A100 accuracy: `dpi: 300`, PaddleOCR
+Thai recognition, `device=gpu:0`, `text_det_limit_side_len: 1920`, and
+automatic zone OCR. If Colab
 runs out of memory, reduce the batch range first before lowering DPI.
+For the A100 accuracy-first full Colab run, use `02_ocr_full_run_colab.ipynb`
+with local scratch enabled. Its `accuracy` profile uses DPI `300`,
+`device=gpu:0`, high-performance inference, and full `metadata + summary +
+table` zone OCR, then builds reports once at the end.
 
 Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
 and time. The local machine only needs the parsed/raw OCR artifacts to rebuild

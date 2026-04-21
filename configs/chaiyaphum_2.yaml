@@ -28,7 +28,7 @@ ocr:
   languages:
     - th
     - en
-  dpi: 250
+  dpi: 300
   image_format: png
   confidence_threshold: 0.65
   fallback_confidence_threshold: 0.45
@@ -39,12 +39,16 @@ ocr:
       - summary
       - table
   paddle:
+    device: gpu:0
+    enable_hpi: true
+    use_tensorrt: false
+    precision: fp32
     text_detection_model_name: PP-OCRv5_mobile_det
     text_recognition_model_name: th_PP-OCRv5_mobile_rec
     use_doc_orientation_classify: false
     use_doc_unwarping: false
     use_textline_orientation: false
-    text_det_limit_side_len: 1280
+    text_det_limit_side_len: 1920
 
 quality:
   target_accuracy: 0.99
