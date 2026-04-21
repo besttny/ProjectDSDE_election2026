@@ -30,6 +30,10 @@ class ProjectConfig:
         return self.data.get("ocr", {})
 
     @property
+    def quality(self) -> dict[str, Any]:
+        return self.data.get("quality", {})
+
+    @property
     def outputs(self) -> dict[str, str]:
         return self.data.get("outputs", {})
 

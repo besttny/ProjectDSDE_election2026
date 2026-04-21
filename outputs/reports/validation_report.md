@@ -10,4 +10,5 @@
 | non_negative_votes | pass | critical | 0 rows have negative votes |
 | duplicate_choice_rows | pass | critical | 0 duplicate rows by form + station + choice; rows without station number are excluded |
 | choice_votes_not_over_valid_votes | warn | major | No extracted valid_votes available for total comparison |
+| ballot_accounting | warn | major | No complete ballot accounting fields available |
 | needs_review_rows | warn | major | 71 rows require manual review |

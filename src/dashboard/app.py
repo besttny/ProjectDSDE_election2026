@@ -39,6 +39,20 @@ def load_validation_report() -> pd.DataFrame:
     return pd.read_csv(path) if path.exists() else pd.DataFrame()
 
 
+@st.cache_data(show_spinner=False)
+def load_accuracy_report() -> pd.DataFrame:
+    config = load_config(CONFIG_PATH)
+    path = config.output("accuracy_report")
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
+def load_review_queue() -> pd.DataFrame:
+    config = load_config(CONFIG_PATH)
+    path = config.output("review_queue")
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
 def _format_int(value: float | int) -> str:
     if pd.isna(value):
         return "-"
@@ -148,10 +162,20 @@ def render_charts(df: pd.DataFrame) -> None:
 
 def render_quality() -> None:
     validation = load_validation_report()
-    if validation.empty:
+    accuracy = load_accuracy_report()
+    review_queue = load_review_queue()
+    if validation.empty and accuracy.empty and review_queue.empty:
         return
     st.subheader("Data quality checks")
-    st.dataframe(validation, use_container_width=True, hide_index=True)
+    if not validation.empty:
+        st.caption("Validation report")
+        st.dataframe(validation, use_container_width=True, hide_index=True)
+    if not accuracy.empty:
+        st.caption("Accuracy report")
+        st.dataframe(accuracy, use_container_width=True, hide_index=True)
+    if not review_queue.empty:
+        st.caption("Manual review queue")
+        st.dataframe(review_queue.head(50), use_container_width=True, hide_index=True)
 
 
 def main() -> None:
@@ -184,4 +208,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

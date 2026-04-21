@@ -11,9 +11,14 @@ flowchart LR
     F --> G["Parser<br/>metadata + result rows"]
     G --> H["Cleaning<br/>normalization + manual corrections"]
     H --> I["Validation report<br/>coverage, totals, duplicates"]
-    H --> J["Analysis outputs<br/>figures + insight report"]
-    H --> K["Dashboard dataset<br/>CSV/Parquet"]
-    K --> L["Streamlit dashboard"]
+    H --> J["Quality control<br/>review queue + master matching"]
+    J --> K["Accuracy evaluation<br/>ground truth sample"]
+    H --> L["Analysis outputs<br/>figures + insight report"]
+    H --> M["Dashboard dataset<br/>CSV/Parquet"]
+    I --> N["Streamlit dashboard"]
+    J --> N
+    K --> N
+    M --> N
 ```
 
 ## Data Contract
@@ -38,4 +43,3 @@ Required columns:
 - `5_18_partylist`
 
 The election-day forms `5_18` and `5_18_partylist` must cover all 341 polling stations.
-

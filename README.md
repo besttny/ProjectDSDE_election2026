@@ -21,6 +21,8 @@ data/
   raw/images/                    # Rendered PDF pages, generated
   raw/ocr/                       # Raw OCR JSON, generated
   external/manual_corrections.csv
+  external/ground_truth_sample.csv
+  external/master_*.csv
   processed/                     # Cleaned CSV/Parquet outputs
 docs/
   architecture.md
@@ -125,6 +127,30 @@ Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
 and time. The local machine only needs the parsed/raw OCR artifacts to rebuild
 validation, final CSVs, dashboard data, and reports.
 
+## 99% Accuracy Workflow
+
+Raw OCR accuracy is not enough for election data. Use these quality-control
+outputs to make a defensible final dataset accuracy claim:
+
+```bash
+python -m src.quality.review_queue --config configs/chaiyaphum_2.yaml
+python -m src.quality.master_match --config configs/chaiyaphum_2.yaml
+python -m src.quality.evaluate_accuracy --config configs/chaiyaphum_2.yaml
+```
+
+Recommended process:
+
+1. Fill `data/external/master_parties.csv`, `master_candidates.csv`, and
+   `master_polling_stations.csv` with official names and aliases.
+2. Run the review queue and fix every `P0` row first.
+3. Use `data/processed/master_match_report.csv` to add repeatable aliases or
+   manual corrections instead of silently editing final outputs.
+4. Manually review a sample of source PDF pages and enter the verified values
+   into `data/external/ground_truth_sample.csv`.
+5. Run the accuracy evaluator. Claim 99% only when
+   `overall_field_accuracy` and `row_exact_accuracy` pass the configured
+   `quality.target_accuracy` threshold.
+
 ## Dashboard
 
 After running the pipeline:
@@ -144,7 +170,12 @@ The dashboard loads `data/processed/dashboard_dataset.parquet` when available an
 - `data/processed/dashboard_dataset.parquet`
 - `data/processed/constituency_votes.csv`
 - `data/processed/partylist_votes.csv`
+- `data/processed/review_queue.csv`
+- `data/processed/master_match_report.csv`
+- `data/processed/accuracy_report.csv`
+- `data/processed/accuracy_details.csv`
 - `outputs/reports/validation_report.md`
+- `outputs/reports/accuracy_report.md`
 - `outputs/reports/insights_report.md`
 - `outputs/figures/top_choices.png`
 
@@ -158,6 +189,7 @@ The validator checks:
 - votes are non-negative
 - duplicate `form_type + polling_station_no + choice_no` rows are not present
 - summed choice votes do not exceed extracted valid votes
+- `valid_votes + invalid_votes + no_vote` matches `ballots_cast` when all fields exist
 - low-confidence OCR rows are marked `needs_review`
 
 ## Manual Corrections

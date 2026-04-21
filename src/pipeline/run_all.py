@@ -11,6 +11,9 @@ from src.pipeline.final_export import export_final_schema
 from src.pipeline.manifest import load_manifest, missing_required_entries, write_manifest_status
 from src.pipeline.ocr_progress import write_ocr_progress
 from src.pipeline.validate import validate_results
+from src.quality.evaluate_accuracy import write_accuracy_outputs
+from src.quality.master_match import write_master_match_report
+from src.quality.review_queue import write_review_queue
 
 
 def main() -> None:
@@ -87,6 +90,9 @@ def main() -> None:
     dashboard_paths = build_dashboard_dataset(config)
     final_paths = export_final_schema(config)
     progress_path = write_ocr_progress(config)
+    master_match_path = write_master_match_report(config)
+    review_queue_path = write_review_queue(config)
+    accuracy_paths = write_accuracy_outputs(config)
     insights_path = build_insights(config)
 
     print(f"Cleaned results: {results_path}")
@@ -96,6 +102,9 @@ def main() -> None:
     print(f"Dashboard datasets: {dashboard_paths[0]}, {dashboard_paths[1]}")
     print(f"Final CSV schema: {final_paths[0]}, {final_paths[1]}")
     print(f"OCR progress: {progress_path}")
+    print(f"Master match report: {master_match_path}")
+    print(f"Review queue: {review_queue_path}")
+    print(f"Accuracy report: {accuracy_paths[0]}, {accuracy_paths[1]}, {accuracy_paths[2]}")
     print(f"Insights report: {insights_path}")
 
 

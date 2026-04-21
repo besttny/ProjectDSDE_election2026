@@ -14,7 +14,10 @@ def test_validate_dataframe_flags_duplicates_and_missing_station_coverage():
                 "polling_station_no": 1,
                 "choice_no": 1,
                 "votes": 10,
+                "ballots_cast": 120,
                 "valid_votes": 100,
+                "invalid_votes": 10,
+                "no_vote": 10,
                 "validation_status": "ok",
             },
             {
@@ -22,7 +25,10 @@ def test_validate_dataframe_flags_duplicates_and_missing_station_coverage():
                 "polling_station_no": 1,
                 "choice_no": 1,
                 "votes": 20,
+                "ballots_cast": 130,
                 "valid_votes": 100,
+                "invalid_votes": 10,
+                "no_vote": 10,
                 "validation_status": "needs_review",
             },
         ]
@@ -40,5 +46,5 @@ def test_validate_dataframe_flags_duplicates_and_missing_station_coverage():
     assert report.loc["required_pdf_files", "status"] == "fail"
     assert report.loc["5_18_station_coverage", "status"] == "fail"
     assert report.loc["duplicate_choice_rows", "status"] == "fail"
+    assert report.loc["ballot_accounting", "status"] == "fail"
     assert report.loc["needs_review_rows", "status"] == "warn"
-

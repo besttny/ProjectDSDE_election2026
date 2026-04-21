@@ -16,6 +16,10 @@ paths:
   figures_dir: outputs/figures
   reports_dir: outputs/reports
   correction_file: data/external/manual_corrections.csv
+  ground_truth_file: data/external/ground_truth_sample.csv
+  master_parties_file: data/external/master_parties.csv
+  master_candidates_file: data/external/master_candidates.csv
+  master_stations_file: data/external/master_polling_stations.csv
 
 ocr:
   primary_engine: paddleocr
@@ -35,6 +39,10 @@ ocr:
     use_textline_orientation: false
     text_det_limit_side_len: 640
 
+quality:
+  target_accuracy: 0.99
+  fuzzy_match_threshold: 0.86
+
 outputs:
   election_results: data/processed/election_results_long.csv
   polling_station_summary: data/processed/polling_station_summary.csv
@@ -45,4 +53,9 @@ outputs:
   dashboard_dataset_csv: data/processed/dashboard_dataset.csv
   constituency_votes: data/processed/constituency_votes.csv
   partylist_votes: data/processed/partylist_votes.csv
+  review_queue: data/processed/review_queue.csv
+  accuracy_report: data/processed/accuracy_report.csv
+  accuracy_details: data/processed/accuracy_details.csv
+  accuracy_report_md: outputs/reports/accuracy_report.md
+  master_match_report: data/processed/master_match_report.csv
   insights_report: outputs/reports/insights_report.md

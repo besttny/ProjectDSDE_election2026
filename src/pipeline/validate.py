@@ -124,6 +124,32 @@ def validate_dataframe(
         totals_detail = "Required columns unavailable for total comparison"
     report.append(_row("choice_votes_not_over_valid_votes", totals_status, "major", totals_detail))
 
+    accounting_mismatches = 0
+    accounting_available = 0
+    accounting_columns = {"ballots_cast", "valid_votes", "invalid_votes", "no_vote"}
+    if not df.empty and accounting_columns.issubset(df.columns):
+        accounting = df[list(accounting_columns)].apply(pd.to_numeric, errors="coerce")
+        complete = accounting.notna().all(axis=1)
+        accounting_available = int(complete.sum())
+        expected_total = (
+            accounting["valid_votes"] + accounting["invalid_votes"] + accounting["no_vote"]
+        )
+        accounting_mismatches = int((complete & (expected_total != accounting["ballots_cast"])).sum())
+        accounting_status = (
+            "fail"
+            if accounting_mismatches
+            else ("pass" if accounting_available else "warn")
+        )
+        accounting_detail = (
+            f"{accounting_mismatches} rows have valid + invalid + no_vote != ballots_cast"
+            if accounting_available
+            else "No complete ballot accounting fields available"
+        )
+    else:
+        accounting_status = "warn"
+        accounting_detail = "Required columns unavailable for ballot accounting"
+    report.append(_row("ballot_accounting", accounting_status, "major", accounting_detail))
+
     needs_review = (
         int((df.get("validation_status", pd.Series(dtype=str)).astype(str) != "ok").sum())
         if not df.empty
