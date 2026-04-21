@@ -18,6 +18,16 @@ MyDrive/election2026/
 If the repo code is not pushed yet, upload a zip of the repo folder to Drive and
 unzip it in Colab. If the code is pushed to GitHub, clone the `dev` branch.
 
+For a ready-to-run full OCR workflow, open:
+
+```text
+notebooks/02_ocr_full_run_colab.ipynb
+```
+
+That notebook mounts Drive, installs a PaddleOCR-only environment, extracts
+`raw_pdfs.zip`, runs manifest batches `1-35`, rebuilds reports, and exports the
+artifact zip back to Drive.
+
 ## 2. Install Dependencies
 
 In Colab:
@@ -27,6 +37,8 @@ pip install -r requirements.txt
 ```
 
 Use a fresh runtime when PaddleOCR or EasyOCR dependency versions change.
+For the full-run notebook, prefer its install cell instead of `requirements.txt`
+because Colab can mix Paddle CUDA packages and EasyOCR/Torch CUDA packages.
 
 ## 3. Check Manifest Progress
 

@@ -121,9 +121,12 @@ python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
 Use Colab for the full OCR run if local memory is limited. The repo supports
 batch OCR so Colab can resume after runtime resets without starting over.
 
-1. Open `notebooks/02_ocr_extraction_colab.ipynb` in Colab.
+1. Open `notebooks/02_ocr_full_run_colab.ipynb` in Colab for the full fresh
+   OCR run. The older `02_ocr_extraction_colab.ipynb` is kept for manual
+   batch experiments.
 2. Mount Google Drive and place the prepared PDF zip or extracted PDF folder in Drive.
-3. Install dependencies from `requirements.txt`.
+3. Use the notebook install cell. It installs PaddleOCR only and disables
+   EasyOCR fallback on Colab to avoid CUDA package conflicts.
 4. Run `python -m src.pipeline.ocr_progress --config configs/chaiyaphum_2.yaml`
    and choose a small manifest range, for example rows `5-8`.
 5. Run OCR with `--start-index` and `--end-index`.
