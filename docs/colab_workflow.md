@@ -51,6 +51,19 @@ Start with 3-5 manifest rows per Colab run:
 python -m src.ocr.extract --config configs/chaiyaphum_2.yaml --start-index 5 --end-index 8
 ```
 
+The OCR run is layout-aware. For each rendered page, the extractor first OCRs
+the full page to locate anchors, then automatically crops and re-OCRs:
+
+```text
+metadata  -> station / district / subdistrict
+summary   -> eligible voters, total ballots, valid, invalid, no-vote
+table     -> candidate or party rows and vote counts
+```
+
+The raw JSON keeps the full-page lines plus shifted zone lines, so the parser
+can use table OCR for vote rows and summary OCR for totals while still keeping
+the original full-page OCR for audit.
+
 Other useful filters:
 
 ```bash
@@ -85,8 +98,10 @@ outputs/reports/
 ```
 
 The rendered images under `data/raw/images/` are optional because they can be
-regenerated. Do not commit large PDFs, rendered page images, OCR JSON, or batch
-zip files.
+regenerated. Zone crop images are also stored under that folder for audit, but
+they do not need to be copied back if `data/raw/ocr/` and `data/processed/parsed/`
+are exported. Do not commit large PDFs, rendered page images, OCR JSON, or
+batch zip files.
 
 ## 7. Restore Locally
 

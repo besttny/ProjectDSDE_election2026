@@ -82,3 +82,72 @@ def test_infer_5_18_constituency_ignores_voter_list_phrase():
         "5_18",
         "constituency",
     )
+
+
+def test_parse_ocr_payload_prefers_table_zone_over_full_page_rows():
+    payload = {
+        "source_pdf": "sample.pdf",
+        "source_page": 1,
+        "ocr_engine": "paddleocr+zones",
+        "ocr_confidence": 0.91,
+        "page_width": 1000,
+        "page_height": 1400,
+        "lines": [
+            {
+                "text": "รายงานผลการนับคะแนนสมาชิกสภาผู้แทนราษฎรแบบแบ่งเขตเลือกตั้ง",
+                "confidence": 0.95,
+                "zone": "full_page",
+                "bbox": [[260, 210], [740, 210], [740, 235], [260, 235]],
+            },
+            {
+                "text": "หน่วยเลือกตั้งที่ 1",
+                "confidence": 0.95,
+                "zone": "metadata",
+                "bbox": [[120, 360], [420, 360], [420, 390], [120, 390]],
+            },
+            {
+                "text": "1 นายทดสอบ พรรคตัวอย่าง 3",
+                "confidence": 0.80,
+                "zone": "full_page",
+                "bbox": [[120, 860], [760, 860], [760, 890], [120, 890]],
+            },
+            {
+                "text": "1",
+                "confidence": 0.95,
+                "zone": "table",
+                "bbox": [[120, 860], [140, 860], [140, 885], [120, 885]],
+            },
+            {
+                "text": "นายทดสอบ",
+                "confidence": 0.95,
+                "zone": "table",
+                "bbox": [[285, 860], [380, 860], [380, 885], [285, 885]],
+            },
+            {
+                "text": "พรรคตัวอย่าง",
+                "confidence": 0.95,
+                "zone": "table",
+                "bbox": [[480, 860], [580, 860], [580, 885], [480, 885]],
+            },
+            {
+                "text": "13",
+                "confidence": 0.95,
+                "zone": "table",
+                "bbox": [[700, 860], [730, 860], [730, 885], [700, 885]],
+            },
+        ],
+    }
+
+    rows = parse_ocr_payload(
+        payload,
+        province="ชัยภูมิ",
+        constituency_no=2,
+        form_type="5_18",
+        vote_type="constituency",
+        confidence_threshold=0.65,
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["polling_station_no"] == 1
+    assert rows[0]["choice_no"] == 1
+    assert rows[0]["votes"] == 13

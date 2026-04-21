@@ -50,9 +50,14 @@ def _bbox_max_y(line: dict[str, Any]) -> float:
     return float(max(point[1] for point in bbox)) if bbox else 0.0
 
 
-def _page_extent(lines: list[dict[str, Any]]) -> tuple[float, float]:
-    max_x = max((_bbox_max_x(line) for line in lines), default=1.0)
-    max_y = max((_bbox_max_y(line) for line in lines), default=1.0)
+def _page_extent(
+    lines: list[dict[str, Any]],
+    *,
+    page_width: float | None = None,
+    page_height: float | None = None,
+) -> tuple[float, float]:
+    max_x = page_width or max((_bbox_max_x(line) for line in lines), default=1.0)
+    max_y = page_height or max((_bbox_max_y(line) for line in lines), default=1.0)
     return (max(max_x, 1.0), max(max_y, 1.0))
 
 
@@ -171,8 +176,15 @@ def _is_table_header_noise(text: str) -> bool:
     )
 
 
-def _group_table_lines(lines: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-    page_width, page_height = _page_extent(lines)
+def _group_table_lines(
+    lines: list[dict[str, Any]],
+    *,
+    page_width: float | None = None,
+    page_height: float | None = None,
+) -> list[list[dict[str, Any]]]:
+    page_width, page_height = _page_extent(
+        lines, page_width=page_width, page_height=page_height
+    )
     y_threshold = max(page_height * 0.028, 22.0)
     candidates = [
         line
@@ -219,10 +231,14 @@ def parse_choice_table(
     lines: list[dict[str, Any]],
     *,
     vote_type: str,
+    page_width: float | None = None,
+    page_height: float | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    page_width, _ = _page_extent(lines)
-    for group in _group_table_lines(lines):
+    page_width, _ = _page_extent(lines, page_width=page_width, page_height=page_height)
+    for group in _group_table_lines(
+        lines, page_width=page_width, page_height=page_height
+    ):
         ordered = sorted(group, key=_bbox_min_x)
         number_candidates = [
             _candidate_number(str(line.get("text", "")))
@@ -280,6 +296,27 @@ def parse_choice_table(
     return rows
 
 
+def _lines_in_zones(lines: list[dict[str, Any]], zones: set[str]) -> list[dict[str, Any]]:
+    return [line for line in lines if str(line.get("zone", "")) in zones]
+
+
+def _preferred_metadata_texts(lines: list[dict[str, Any]]) -> list[str]:
+    metadata_lines = _lines_in_zones(lines, {"metadata", "summary"})
+    full_page_lines = _lines_in_zones(lines, {"full_page"})
+    if metadata_lines:
+        return line_text(metadata_lines) + line_text(full_page_lines)
+    return line_text(lines)
+
+
+def _preferred_choice_lines(
+    lines: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    table_lines = _lines_in_zones(lines, {"table"})
+    if table_lines:
+        return table_lines, lines
+    return lines, []
+
+
 def infer_form_and_vote_type(
     texts: list[str],
     *,
@@ -309,26 +346,50 @@ def parse_ocr_payload(
 ) -> list[dict[str, Any]]:
     lines = payload.get("lines", [])
     texts = line_text(lines)
-    metadata = extract_metadata(texts)
+    metadata = extract_metadata(_preferred_metadata_texts(lines))
     resolved_form_type, resolved_vote_type = infer_form_and_vote_type(
         texts, form_type=form_type, vote_type=vote_type
     )
+    page_width = payload.get("page_width")
+    page_height = payload.get("page_height")
     page_confidence = payload.get("ocr_confidence")
     if page_confidence is None and lines:
         page_confidence = sum(float(line.get("confidence", 0.0)) for line in lines) / len(lines)
     page_confidence = float(page_confidence or 0.0)
     status = "ok" if page_confidence >= confidence_threshold else "needs_review"
 
+    choice_lines, fallback_choice_lines = _preferred_choice_lines(lines)
+    choice_texts = line_text(choice_lines)
     choices = [
         choice
-        for text in texts
+        for text in choice_texts
         if (choice := parse_choice_line(text)) is not None
     ]
     seen_choice_numbers = {choice["choice_no"] for choice in choices}
-    for choice in parse_choice_table(lines, vote_type=resolved_vote_type):
+    for choice in parse_choice_table(
+        choice_lines,
+        vote_type=resolved_vote_type,
+        page_width=float(page_width) if page_width else None,
+        page_height=float(page_height) if page_height else None,
+    ):
         if choice["choice_no"] not in seen_choice_numbers:
             choices.append(choice)
             seen_choice_numbers.add(choice["choice_no"])
+    if fallback_choice_lines:
+        for text in line_text(fallback_choice_lines):
+            choice = parse_choice_line(text)
+            if choice is not None and choice["choice_no"] not in seen_choice_numbers:
+                choices.append(choice)
+                seen_choice_numbers.add(choice["choice_no"])
+        for choice in parse_choice_table(
+            fallback_choice_lines,
+            vote_type=resolved_vote_type,
+            page_width=float(page_width) if page_width else None,
+            page_height=float(page_height) if page_height else None,
+        ):
+            if choice["choice_no"] not in seen_choice_numbers:
+                choices.append(choice)
+                seen_choice_numbers.add(choice["choice_no"])
 
     rows: list[dict[str, Any]] = []
     for choice in choices:

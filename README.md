@@ -95,6 +95,14 @@ python -m src.ocr.extract --config configs/chaiyaphum_2.yaml --start-index 5 --e
 python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
 ```
 
+OCR is layout-aware by default. Each page is OCRed once as a full page, then
+the pipeline automatically crops and OCRs the `metadata`, `summary`, and
+`table` zones. The table zone is used first for candidate/party rows, while
+the summary zone is used first for `บัตรดี`, `บัตรเสีย`, and
+`ไม่เลือกผู้สมัคร`. Old raw OCR JSON files without zone metadata are refreshed
+the next time `src.ocr.extract` runs; use `--overwrite` only when you want to
+force a complete rerun.
+
 Useful filters:
 
 ```bash
@@ -122,6 +130,10 @@ batch OCR so Colab can resume after runtime resets without starting over.
 6. Zip `data/raw/ocr/` and `data/processed/parsed/` back to Drive after each batch.
 7. Copy those folders back into this repo locally, then run
    `python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr`.
+
+The default OCR config is tuned for Colab accuracy: `dpi: 250`, PaddleOCR Thai
+recognition, `text_det_limit_side_len: 1280`, and automatic zone OCR. If Colab
+runs out of memory, reduce the batch range first before lowering DPI.
 
 Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
 and time. The local machine only needs the parsed/raw OCR artifacts to rebuild

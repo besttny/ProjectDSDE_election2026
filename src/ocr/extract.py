@@ -11,11 +11,19 @@ from src.ocr.engines import (
     OCRDependencyError,
     LazyOCREngine,
     OCREngine,
+    average_confidence,
     build_engine,
     run_ocr_with_fallback,
 )
 from src.ocr.parser import parse_ocr_json, rows_to_dataframe
 from src.ocr.render import render_pdf_pages
+from src.ocr.zones import (
+    crop_zone_image,
+    detect_ocr_zones,
+    image_size,
+    shift_lines_to_page,
+    tag_full_page_lines,
+)
 from src.pipeline.config import ProjectConfig, load_config
 from src.pipeline.manifest import ManifestEntry, load_manifest, missing_required_entries
 from src.pipeline.schema import RESULT_COLUMNS
@@ -36,6 +44,9 @@ def _write_raw_ocr(
     source_page: int,
     ocr_engine: str,
     lines: list[dict[str, Any]],
+    page_width: int | None = None,
+    page_height: int | None = None,
+    zones: list[dict[str, Any]] | None = None,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     confidence = (
@@ -48,6 +59,9 @@ def _write_raw_ocr(
         "source_page": source_page,
         "ocr_engine": ocr_engine,
         "ocr_confidence": round(confidence, 4),
+        "page_width": page_width,
+        "page_height": page_height,
+        "zones": zones or [],
         "lines": lines,
     }
     with output_path.open("w", encoding="utf-8") as handle:
@@ -81,6 +95,97 @@ def _normalize_form_filters(form_types: Sequence[str] | None) -> set[str]:
     for value in form_types or []:
         normalized.update(part.strip() for part in value.split(",") if part.strip())
     return normalized
+
+
+def _zone_ocr_options(config: ProjectConfig) -> dict[str, Any]:
+    options = config.ocr.get("zone_ocr", {})
+    return options if isinstance(options, dict) else {}
+
+
+def _zone_ocr_enabled(config: ProjectConfig) -> bool:
+    return bool(_zone_ocr_options(config).get("enabled", False))
+
+
+def _raw_json_supports_current_mode(raw_path: Path, *, zone_ocr_enabled: bool) -> bool:
+    if not raw_path.exists():
+        return False
+    if not zone_ocr_enabled:
+        return True
+    try:
+        with raw_path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except json.JSONDecodeError:
+        return False
+    return bool(payload.get("zones"))
+
+
+def _ocr_page(
+    *,
+    image_path: Path,
+    entry: ManifestEntry,
+    config: ProjectConfig,
+    primary_engine: OCREngine,
+    fallback_engine: OCREngine | None,
+    confidence_threshold: float,
+) -> tuple[str, list[dict[str, Any]], int, int, list[dict[str, Any]]]:
+    page_width, page_height = image_size(image_path)
+    full_engine_name, full_lines = run_ocr_with_fallback(
+        image_path,
+        primary_engine=primary_engine,
+        fallback_engine=fallback_engine,
+        confidence_threshold=confidence_threshold,
+    )
+
+    zone_options = _zone_ocr_options(config)
+    if not bool(zone_options.get("enabled", False)):
+        return (
+            full_engine_name,
+            tag_full_page_lines(full_lines, ocr_engine=full_engine_name),
+            page_width,
+            page_height,
+            [],
+        )
+
+    zones = detect_ocr_zones(image_path, full_lines, options=zone_options)
+    images_zone_dir = (
+        config.path("raw_image_dir") / entry.form_type / entry.file_path.stem / "zones"
+    )
+    merged_lines = tag_full_page_lines(full_lines, ocr_engine=full_engine_name)
+    zone_metadata: list[dict[str, Any]] = []
+
+    for zone in zones:
+        crop_path = crop_zone_image(image_path, zone, images_zone_dir)
+        zone_engine_name, zone_lines = run_ocr_with_fallback(
+            crop_path,
+            primary_engine=primary_engine,
+            fallback_engine=fallback_engine,
+            confidence_threshold=confidence_threshold,
+        )
+        shifted_lines = shift_lines_to_page(
+            zone_lines,
+            zone=zone,
+            ocr_engine=zone_engine_name,
+        )
+        merged_lines.extend(shifted_lines)
+        zone_metadata.append(
+            {
+                "name": zone.name,
+                "source": zone.source,
+                "crop_box": list(zone.crop_box),
+                "image_path": str(crop_path),
+                "ocr_engine": zone_engine_name,
+                "ocr_confidence": round(average_confidence(zone_lines), 4),
+                "line_count": len(zone_lines),
+            }
+        )
+
+    return (
+        f"{full_engine_name}+zones",
+        merged_lines,
+        page_width,
+        page_height,
+        zone_metadata,
+    )
 
 
 def select_manifest_entries(
@@ -146,17 +251,25 @@ def process_manifest_entry(
     fallback_options = _engine_options(config, fallback_name) if fallback_name else {}
     primary: OCREngine | None = None
     fallback: OCREngine | None = None
+    zone_ocr_enabled = _zone_ocr_enabled(config)
 
     rows: list[dict[str, Any]] = []
     for image_path in images:
         raw_path = _raw_json_path(config, entry, image_path)
-        if not raw_path.exists() or not skip_existing:
+        if (
+            not skip_existing
+            or not _raw_json_supports_current_mode(
+                raw_path, zone_ocr_enabled=zone_ocr_enabled
+            )
+        ):
             if primary is None:
                 primary = build_engine(primary_name, languages, primary_options)
             if fallback_name and fallback is None:
                 fallback = LazyOCREngine(fallback_name, languages, fallback_options)
-            engine_name, lines = run_ocr_with_fallback(
-                image_path,
+            engine_name, lines, page_width, page_height, zones = _ocr_page(
+                image_path=image_path,
+                entry=entry,
+                config=config,
                 primary_engine=primary,
                 fallback_engine=fallback,
                 confidence_threshold=fallback_threshold,
@@ -167,6 +280,9 @@ def process_manifest_entry(
                 source_page=_page_number_from_image(image_path),
                 ocr_engine=engine_name,
                 lines=lines,
+                page_width=page_width,
+                page_height=page_height,
+                zones=zones,
             )
         rows.extend(
             parse_ocr_json(
