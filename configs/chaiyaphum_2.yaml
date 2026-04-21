@@ -39,7 +39,10 @@ outputs:
   election_results: data/processed/election_results_long.csv
   polling_station_summary: data/processed/polling_station_summary.csv
   validation_report: data/processed/validation_report.csv
+  ocr_progress: data/processed/ocr_progress.csv
   validation_report_md: outputs/reports/validation_report.md
   dashboard_dataset: data/processed/dashboard_dataset.parquet
   dashboard_dataset_csv: data/processed/dashboard_dataset.csv
+  constituency_votes: data/processed/constituency_votes.csv
+  partylist_votes: data/processed/partylist_votes.csv
   insights_report: outputs/reports/insights_report.md

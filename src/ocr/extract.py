@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import pandas as pd
 
@@ -76,6 +76,50 @@ def _engine_options(config: ProjectConfig, engine_name: str) -> dict[str, Any]:
     return dict(config.ocr.get(normalized, config.ocr.get(aliases.get(normalized, ""), {})))
 
 
+def _normalize_form_filters(form_types: Sequence[str] | None) -> set[str]:
+    normalized: set[str] = set()
+    for value in form_types or []:
+        normalized.update(part.strip() for part in value.split(",") if part.strip())
+    return normalized
+
+
+def select_manifest_entries(
+    entries: Sequence[ManifestEntry],
+    *,
+    start_index: int | None = None,
+    end_index: int | None = None,
+    form_types: Sequence[str] | None = None,
+    file_contains: str | None = None,
+) -> list[ManifestEntry]:
+    """Filter manifest rows for resumable Colab/local OCR batches.
+
+    CLI indexes are 1-based and inclusive because users copy them from the
+    generated OCR progress report.
+    """
+
+    if start_index is not None and start_index < 1:
+        raise ValueError("--start-index must be 1 or greater")
+    if end_index is not None and end_index < 1:
+        raise ValueError("--end-index must be 1 or greater")
+    if start_index is not None and end_index is not None and start_index > end_index:
+        raise ValueError("--start-index must be less than or equal to --end-index")
+
+    form_filter = _normalize_form_filters(form_types)
+    path_filter = file_contains.casefold() if file_contains else ""
+    selected: list[ManifestEntry] = []
+    for manifest_index, entry in enumerate(entries, start=1):
+        if start_index is not None and manifest_index < start_index:
+            continue
+        if end_index is not None and manifest_index > end_index:
+            continue
+        if form_filter and entry.form_type not in form_filter:
+            continue
+        if path_filter and path_filter not in str(entry.file_path).casefold():
+            continue
+        selected.append(entry)
+    return selected
+
+
 def process_manifest_entry(
     config: ProjectConfig,
     entry: ManifestEntry,
@@ -146,10 +190,22 @@ def run_extraction(
     *,
     limit_pages: int | None = None,
     max_files: int | None = None,
+    start_index: int | None = None,
+    end_index: int | None = None,
+    form_types: Sequence[str] | None = None,
+    file_contains: str | None = None,
     skip_existing: bool = True,
 ) -> list[Path]:
     outputs: list[Path] = []
-    entries = load_manifest(config)
+    entries = select_manifest_entries(
+        load_manifest(config),
+        start_index=start_index,
+        end_index=end_index,
+        form_types=form_types,
+        file_contains=file_contains,
+    )
+    if not entries:
+        raise ValueError("No manifest entries matched the selected OCR filters.")
     missing = missing_required_entries(entries)
     if missing:
         missing_text = "\n".join(f"- {entry.file_path}" for entry in missing)
@@ -188,6 +244,29 @@ def main() -> None:
     parser.add_argument("--config", default="configs/chaiyaphum_2.yaml")
     parser.add_argument("--limit-pages", type=int, default=None)
     parser.add_argument("--max-files", type=int, default=None)
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=None,
+        help="1-based manifest row to start from; useful for Colab batch runs.",
+    )
+    parser.add_argument(
+        "--end-index",
+        type=int,
+        default=None,
+        help="1-based manifest row to stop at, inclusive.",
+    )
+    parser.add_argument(
+        "--form-type",
+        action="append",
+        default=None,
+        help="Restrict OCR to one or more form types. Repeat or comma-separate values.",
+    )
+    parser.add_argument(
+        "--file-contains",
+        default=None,
+        help="Restrict OCR to manifest files whose path contains this text.",
+    )
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
@@ -197,6 +276,10 @@ def main() -> None:
             config,
             limit_pages=args.limit_pages,
             max_files=args.max_files,
+            start_index=args.start_index,
+            end_index=args.end_index,
+            form_types=args.form_type,
+            file_contains=args.file_contains,
             skip_existing=not args.overwrite,
         )
     except OCRDependencyError as exc:

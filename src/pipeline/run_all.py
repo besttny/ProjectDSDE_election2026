@@ -3,11 +3,13 @@ from __future__ import annotations
 import argparse
 
 from src.analysis.insights import build_insights
-from src.ocr.extract import run_extraction
+from src.ocr.extract import run_extraction, select_manifest_entries
 from src.pipeline.clean import clean_results
 from src.pipeline.config import load_config
 from src.pipeline.dashboard_prep import build_dashboard_dataset
+from src.pipeline.final_export import export_final_schema
 from src.pipeline.manifest import load_manifest, missing_required_entries, write_manifest_status
+from src.pipeline.ocr_progress import write_ocr_progress
 from src.pipeline.validate import validate_results
 
 
@@ -16,6 +18,29 @@ def main() -> None:
     parser.add_argument("--config", default="configs/chaiyaphum_2.yaml")
     parser.add_argument("--limit-pages", type=int, default=None)
     parser.add_argument("--max-files", type=int, default=None)
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=None,
+        help="1-based manifest row to start OCR from.",
+    )
+    parser.add_argument(
+        "--end-index",
+        type=int,
+        default=None,
+        help="1-based manifest row to stop OCR at, inclusive.",
+    )
+    parser.add_argument(
+        "--form-type",
+        action="append",
+        default=None,
+        help="Restrict OCR to one or more form types. Repeat or comma-separate values.",
+    )
+    parser.add_argument(
+        "--file-contains",
+        default=None,
+        help="Restrict OCR to manifest files whose path contains this text.",
+    )
     parser.add_argument(
         "--skip-ocr",
         action="store_true",
@@ -29,7 +54,14 @@ def main() -> None:
 
     entries = load_manifest(config)
     manifest_path = write_manifest_status(config, entries)
-    missing = missing_required_entries(entries)
+    selected_entries = select_manifest_entries(
+        entries,
+        start_index=args.start_index,
+        end_index=args.end_index,
+        form_types=args.form_type,
+        file_contains=args.file_contains,
+    )
+    missing = missing_required_entries(selected_entries)
     if args.skip_ocr:
         print("Skipping OCR by request.")
     elif missing:
@@ -42,6 +74,10 @@ def main() -> None:
             config,
             limit_pages=args.limit_pages,
             max_files=args.max_files,
+            start_index=args.start_index,
+            end_index=args.end_index,
+            form_types=args.form_type,
+            file_contains=args.file_contains,
             skip_existing=not args.overwrite_ocr,
         ):
             print(f"OCR parsed output: {output}")
@@ -49,6 +85,8 @@ def main() -> None:
     results_path, summary_path = clean_results(config)
     validation_csv, validation_md = validate_results(config)
     dashboard_paths = build_dashboard_dataset(config)
+    final_paths = export_final_schema(config)
+    progress_path = write_ocr_progress(config)
     insights_path = build_insights(config)
 
     print(f"Cleaned results: {results_path}")
@@ -56,6 +94,8 @@ def main() -> None:
     print(f"Validation report: {validation_csv}")
     print(f"Validation markdown: {validation_md}")
     print(f"Dashboard datasets: {dashboard_paths[0]}, {dashboard_paths[1]}")
+    print(f"Final CSV schema: {final_paths[0]}, {final_paths[1]}")
+    print(f"OCR progress: {progress_path}")
     print(f"Insights report: {insights_path}")
 
 

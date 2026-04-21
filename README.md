@@ -84,11 +84,46 @@ python -m src.ocr.extract --config configs/chaiyaphum_2.yaml --limit-pages 2
 python -m src.pipeline.validate --config configs/chaiyaphum_2.yaml
 ```
 
+For a resumable OCR batch, use the 1-based manifest row numbers. This is the
+recommended mode for Google Colab or any low-RAM machine:
+
+```bash
+python -m src.pipeline.ocr_progress --config configs/chaiyaphum_2.yaml
+python -m src.ocr.extract --config configs/chaiyaphum_2.yaml --start-index 5 --end-index 8
+python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
+```
+
+Useful filters:
+
+```bash
+python -m src.ocr.extract --config configs/chaiyaphum_2.yaml --form-type 5_18_auto,5_18,5_18_partylist
+python -m src.ocr.extract --config configs/chaiyaphum_2.yaml --file-contains "อำเภอเนินสง่า"
+```
+
 Rebuild cleaned outputs, validation, dashboard data, and reports without rerunning OCR:
 
 ```bash
 python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
 ```
+
+## Google Colab Workflow
+
+Use Colab for the full OCR run if local memory is limited. The repo supports
+batch OCR so Colab can resume after runtime resets without starting over.
+
+1. Open `notebooks/02_ocr_extraction_colab.ipynb` in Colab.
+2. Mount Google Drive and place the prepared PDF zip or extracted PDF folder in Drive.
+3. Install dependencies from `requirements.txt`.
+4. Run `python -m src.pipeline.ocr_progress --config configs/chaiyaphum_2.yaml`
+   and choose a small manifest range, for example rows `5-8`.
+5. Run OCR with `--start-index` and `--end-index`.
+6. Zip `data/raw/ocr/` and `data/processed/parsed/` back to Drive after each batch.
+7. Copy those folders back into this repo locally, then run
+   `python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr`.
+
+Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
+and time. The local machine only needs the parsed/raw OCR artifacts to rebuild
+validation, final CSVs, dashboard data, and reports.
 
 ## Dashboard
 
@@ -105,7 +140,10 @@ The dashboard loads `data/processed/dashboard_dataset.parquet` when available an
 - `data/processed/election_results_long.csv`
 - `data/processed/polling_station_summary.csv`
 - `data/processed/validation_report.csv`
+- `data/processed/ocr_progress.csv`
 - `data/processed/dashboard_dataset.parquet`
+- `data/processed/constituency_votes.csv`
+- `data/processed/partylist_votes.csv`
 - `outputs/reports/validation_report.md`
 - `outputs/reports/insights_report.md`
 - `outputs/figures/top_choices.png`
