@@ -1,4 +1,4 @@
-from src.ocr.parser import parse_ocr_payload, parse_choice_line
+from src.ocr.parser import parse_choice_line, parse_choice_table, parse_ocr_payload
 
 
 def test_parse_choice_line_with_party_and_votes():
@@ -48,3 +48,20 @@ def test_parse_ocr_payload_extracts_metadata_and_rows():
     assert rows[0]["votes"] == 123
     assert rows[0]["validation_status"] == "ok"
 
+
+def test_parse_choice_table_from_positioned_ocr_lines():
+    lines = [
+        {"text": "๒", "confidence": 0.9, "bbox": [[220, 1110], [240, 1110]]},
+        {"text": "เพื่อชาติไทย", "confidence": 0.9, "bbox": [[370, 1091], [500, 1091]]},
+        {"text": "15", "confidence": 0.8, "bbox": [[720, 1097], [760, 1097]]},
+        {"text": "๓", "confidence": 0.9, "bbox": [[220, 1168], [240, 1168]]},
+        {"text": "ใหม่", "confidence": 0.9, "bbox": [[370, 1151], [500, 1151]]},
+        {"text": "...", "confidence": 0.6, "bbox": [[720, 1152], [760, 1152]]},
+    ]
+
+    rows = parse_choice_table(lines, vote_type="party_list")
+
+    assert rows == [
+        {"choice_no": 2, "choice_name": "", "party_name": "เพื่อชาติไทย", "votes": 15},
+        {"choice_no": 3, "choice_name": "", "party_name": "ใหม่", "votes": None},
+    ]

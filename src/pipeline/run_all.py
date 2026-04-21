@@ -15,6 +15,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the complete Election 2026 pipeline.")
     parser.add_argument("--config", default="configs/chaiyaphum_2.yaml")
     parser.add_argument("--limit-pages", type=int, default=None)
+    parser.add_argument("--max-files", type=int, default=None)
     parser.add_argument(
         "--skip-ocr",
         action="store_true",
@@ -40,6 +41,7 @@ def main() -> None:
         for output in run_extraction(
             config,
             limit_pages=args.limit_pages,
+            max_files=args.max_files,
             skip_existing=not args.overwrite_ocr,
         ):
             print(f"OCR parsed output: {output}")
@@ -59,4 +61,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

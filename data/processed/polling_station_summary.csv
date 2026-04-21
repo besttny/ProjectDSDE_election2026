@@ -1,1 +1,6 @@
 ﻿province,constituency_no,form_type,vote_type,polling_station_no,district,subdistrict,total_choice_votes,eligible_voters,ballots_cast,valid_votes,invalid_votes,no_vote,choice_count,needs_review_rows
+ชัยภูมิ,2,5_16,constituency,,,,1.0,,,,,,2,1
+ชัยภูมิ,2,5_16_partylist,party_list,,,,1.0,,,,,,9,8
+ชัยภูมิ,2,5_17,constituency,,,,10.0,,,,,,7,8
+ชัยภูมิ,2,5_17_partylist,party_list,,,,60.0,,,,,,21,51
+ชัยภูมิ,2,5_18_partylist,party_list,,/เขต,,0.0,,,,,,3,3

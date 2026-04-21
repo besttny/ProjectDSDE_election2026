@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -28,10 +29,22 @@ def _save_top_choices_figure(df: pd.DataFrame, output_dir: Path) -> Path | None:
     if top.empty:
         return None
     try:
+        os.environ.setdefault("MPLCONFIGDIR", str(Path.cwd() / ".cache" / "matplotlib"))
+        Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
         import matplotlib
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        from matplotlib import font_manager
+
+        for font_path in [
+            Path("/System/Library/Fonts/Supplemental/Thonburi.ttc"),
+            Path("/System/Library/Fonts/ThonburiUI.ttc"),
+        ]:
+            if font_path.exists():
+                font_manager.fontManager.addfont(str(font_path))
+                plt.rcParams["font.family"] = "Thonburi"
+                break
     except ImportError:
         return None
 
@@ -68,8 +81,11 @@ def build_insights(config: ProjectConfig) -> Path:
     forms = ", ".join(sorted(df["form_type"].dropna().astype(str).unique()))
     needs_review = int((df["validation_status"].astype(str) != "ok").sum())
 
+    readable = df.copy()
+    readable["choice_name"] = readable["choice_name"].fillna("")
+    readable["party_name"] = readable["party_name"].fillna("")
     top_choices = (
-        df.assign(votes=numeric_votes)
+        readable.assign(votes=numeric_votes)
         .groupby(["choice_name", "party_name"], dropna=False)["votes"]
         .sum()
         .sort_values(ascending=False)
@@ -78,7 +94,7 @@ def build_insights(config: ProjectConfig) -> Path:
     )
 
     station_totals = (
-        df.assign(votes=numeric_votes)
+        readable.assign(votes=numeric_votes)
         .groupby(["form_type", "polling_station_no"], dropna=False)["votes"]
         .sum()
         .reset_index()
@@ -136,4 +152,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -15,6 +16,15 @@ class OCREngine(Protocol):
         ...
 
 
+def _prepare_local_cache(name: str) -> Path:
+    cache_dir = Path.cwd() / ".cache" / name
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("XDG_CACHE_HOME", str(Path.cwd() / ".cache"))
+    os.environ.setdefault("MPLCONFIGDIR", str(Path.cwd() / ".cache" / "matplotlib"))
+    Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+    return cache_dir
+
+
 def _normalize_bbox(value: Any) -> list[list[float]]:
     if value is None:
         return []
@@ -24,7 +34,10 @@ def _normalize_bbox(value: Any) -> list[list[float]]:
 class PaddleOCREngine:
     name = "paddleocr"
 
-    def __init__(self, languages: list[str]) -> None:
+    def __init__(self, languages: list[str], options: dict[str, Any] | None = None) -> None:
+        cache_dir = _prepare_local_cache("paddlex")
+        os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(cache_dir))
+        os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
         try:
             from paddleocr import PaddleOCR
         except ImportError as exc:  # pragma: no cover - optional dependency
@@ -33,13 +46,35 @@ class PaddleOCREngine:
             ) from exc
 
         lang = "th" if "th" in languages else languages[0]
+        options = options or {}
+        init_kwargs: dict[str, Any] = {
+            "lang": lang,
+            "use_doc_orientation_classify": options.get("use_doc_orientation_classify", False),
+            "use_doc_unwarping": options.get("use_doc_unwarping", False),
+            "use_textline_orientation": options.get("use_textline_orientation", False),
+        }
+        for key in [
+            "text_detection_model_name",
+            "text_recognition_model_name",
+            "text_det_limit_side_len",
+            "text_det_limit_type",
+            "text_det_thresh",
+            "text_det_box_thresh",
+            "text_det_unclip_ratio",
+            "text_rec_score_thresh",
+        ]:
+            if key in options:
+                init_kwargs[key] = options[key]
         try:
-            self._engine = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
-        except TypeError:
+            self._engine = PaddleOCR(**init_kwargs)
+        except (TypeError, ValueError):
             self._engine = PaddleOCR(use_angle_cls=True, lang=lang)
 
     def read(self, image_path: Path) -> list[dict[str, Any]]:
-        raw = self._engine.ocr(str(image_path), cls=True)
+        try:
+            raw = self._engine.ocr(str(image_path), cls=True)
+        except TypeError:
+            raw = self._engine.ocr(str(image_path))
         return normalize_paddle_output(raw)
 
 
@@ -47,17 +82,45 @@ class EasyOCREngine:
     name = "easyocr"
 
     def __init__(self, languages: list[str]) -> None:
+        cache_dir = _prepare_local_cache("easyocr")
+        model_dir = cache_dir / "model"
+        user_network_dir = cache_dir / "user_network"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        user_network_dir.mkdir(parents=True, exist_ok=True)
         try:
             import easyocr
         except ImportError as exc:  # pragma: no cover - optional dependency
             raise OCRDependencyError(
                 "easyocr is not installed. Install requirements.txt or switch OCR engine."
             ) from exc
-        self._engine = easyocr.Reader(languages, gpu=False)
+        self._engine = easyocr.Reader(
+            languages,
+            gpu=False,
+            model_storage_directory=str(model_dir),
+            user_network_directory=str(user_network_dir),
+        )
 
     def read(self, image_path: Path) -> list[dict[str, Any]]:
         raw = self._engine.readtext(str(image_path))
         return normalize_easyocr_output(raw)
+
+
+class LazyOCREngine:
+    def __init__(
+        self,
+        name: str,
+        languages: list[str],
+        options: dict[str, Any] | None = None,
+    ) -> None:
+        self.name = name
+        self._languages = languages
+        self._options = options or {}
+        self._engine: OCREngine | None = None
+
+    def read(self, image_path: Path) -> list[dict[str, Any]]:
+        if self._engine is None:
+            self._engine = build_engine(self.name, self._languages, self._options)
+        return self._engine.read(image_path)
 
 
 def normalize_paddle_output(raw: Any) -> list[dict[str, Any]]:
@@ -119,10 +182,14 @@ def normalize_easyocr_output(raw: Any) -> list[dict[str, Any]]:
     return lines
 
 
-def build_engine(name: str, languages: list[str]) -> OCREngine:
+def build_engine(
+    name: str,
+    languages: list[str],
+    options: dict[str, Any] | None = None,
+) -> OCREngine:
     normalized = name.strip().lower()
     if normalized == "paddleocr":
-        return PaddleOCREngine(languages)
+        return PaddleOCREngine(languages, options)
     if normalized == "easyocr":
         return EasyOCREngine(languages)
     raise ValueError(f"Unsupported OCR engine: {name}")

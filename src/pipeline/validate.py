@@ -91,13 +91,16 @@ def validate_dataframe(
     duplicate_count = 0
     duplicate_subset = ["form_type", "polling_station_no", "choice_no"]
     if not df.empty and set(duplicate_subset).issubset(df.columns):
-        duplicate_count = int(df.duplicated(subset=duplicate_subset, keep=False).sum())
+        duplicate_base = df.dropna(subset=["polling_station_no", "choice_no"])
+        duplicate_count = int(
+            duplicate_base.duplicated(subset=duplicate_subset, keep=False).sum()
+        )
     report.append(
         _row(
             "duplicate_choice_rows",
             "fail" if duplicate_count else "pass",
             "critical",
-            f"{duplicate_count} duplicate rows by form + station + choice",
+            f"{duplicate_count} duplicate rows by form + station + choice; rows without station number are excluded",
         )
     )
 
@@ -179,4 +182,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

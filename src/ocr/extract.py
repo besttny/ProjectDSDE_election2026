@@ -7,7 +7,13 @@ from typing import Any
 
 import pandas as pd
 
-from src.ocr.engines import OCRDependencyError, build_engine, run_ocr_with_fallback
+from src.ocr.engines import (
+    OCRDependencyError,
+    LazyOCREngine,
+    OCREngine,
+    build_engine,
+    run_ocr_with_fallback,
+)
 from src.ocr.parser import parse_ocr_json, rows_to_dataframe
 from src.ocr.render import render_pdf_pages
 from src.pipeline.config import ProjectConfig, load_config
@@ -61,6 +67,15 @@ def _parsed_output_path(config: ProjectConfig, entry: ManifestEntry) -> Path:
     return config.path("parsed_dir") / f"{entry.form_type}_{entry.file_path.stem}.csv"
 
 
+def _engine_options(config: ProjectConfig, engine_name: str) -> dict[str, Any]:
+    normalized = engine_name.strip().lower()
+    aliases = {
+        "paddleocr": "paddle",
+        "easyocr": "easyocr",
+    }
+    return dict(config.ocr.get(normalized, config.ocr.get(aliases.get(normalized, ""), {})))
+
+
 def process_manifest_entry(
     config: ProjectConfig,
     entry: ManifestEntry,
@@ -80,19 +95,27 @@ def process_manifest_entry(
 
     languages = list(config.ocr.get("languages", ["th", "en"]))
     threshold = float(config.ocr.get("confidence_threshold", 0.65))
-    primary = build_engine(str(config.ocr.get("primary_engine", "paddleocr")), languages)
+    fallback_threshold = float(config.ocr.get("fallback_confidence_threshold", threshold))
+    primary_name = str(config.ocr.get("primary_engine", "paddleocr"))
+    primary_options = _engine_options(config, primary_name)
     fallback_name = str(config.ocr.get("fallback_engine", "")).strip()
-    fallback = build_engine(fallback_name, languages) if fallback_name else None
+    fallback_options = _engine_options(config, fallback_name) if fallback_name else {}
+    primary: OCREngine | None = None
+    fallback: OCREngine | None = None
 
     rows: list[dict[str, Any]] = []
     for image_path in images:
         raw_path = _raw_json_path(config, entry, image_path)
         if not raw_path.exists() or not skip_existing:
+            if primary is None:
+                primary = build_engine(primary_name, languages, primary_options)
+            if fallback_name and fallback is None:
+                fallback = LazyOCREngine(fallback_name, languages, fallback_options)
             engine_name, lines = run_ocr_with_fallback(
                 image_path,
                 primary_engine=primary,
                 fallback_engine=fallback,
-                confidence_threshold=threshold,
+                confidence_threshold=fallback_threshold,
             )
             _write_raw_ocr(
                 output_path=raw_path,
@@ -122,6 +145,7 @@ def run_extraction(
     config: ProjectConfig,
     *,
     limit_pages: int | None = None,
+    max_files: int | None = None,
     skip_existing: bool = True,
 ) -> list[Path]:
     outputs: list[Path] = []
@@ -134,9 +158,12 @@ def run_extraction(
             f"{missing_text}"
         )
 
+    processed_count = 0
     for entry in entries:
         if not entry.exists:
             continue
+        if max_files is not None and processed_count >= max_files:
+            break
         outputs.append(
             process_manifest_entry(
                 config,
@@ -145,6 +172,7 @@ def run_extraction(
                 skip_existing=skip_existing,
             )
         )
+        processed_count += 1
     if not outputs:
         empty_path = config.path("parsed_dir") / "empty_results.csv"
         empty_path.parent.mkdir(parents=True, exist_ok=True)
@@ -159,6 +187,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Render ECT PDFs and OCR them.")
     parser.add_argument("--config", default="configs/chaiyaphum_2.yaml")
     parser.add_argument("--limit-pages", type=int, default=None)
+    parser.add_argument("--max-files", type=int, default=None)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
@@ -167,6 +196,7 @@ def main() -> None:
         outputs = run_extraction(
             config,
             limit_pages=args.limit_pages,
+            max_files=args.max_files,
             skip_existing=not args.overwrite,
         )
     except OCRDependencyError as exc:
@@ -177,4 +207,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

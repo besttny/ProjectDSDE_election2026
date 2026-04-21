@@ -1,8 +1,36 @@
-form_type,vote_type,required,expected_polling_stations,file_path,source_url,notes
-5_16,constituency,true,,data/raw/pdfs/5_16/chaiyaphum_2_5_16.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting in-district constituency ballot
-5_16_partylist,party_list,true,,data/raw/pdfs/5_16_partylist/chaiyaphum_2_5_16_partylist.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting in-district party-list ballot
-5_17,constituency,true,,data/raw/pdfs/5_17/chaiyaphum_2_5_17.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting out-of-district constituency ballot
-5_17_partylist,party_list,true,,data/raw/pdfs/5_17_partylist/chaiyaphum_2_5_17_partylist.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting out-of-district party-list ballot
-5_18,constituency,true,341,data/raw/pdfs/5_18/chaiyaphum_2_5_18.pdf,https://www.ect.go.th/ect_th/th/election-2026,Election day constituency ballot; must cover all polling stations
-5_18_partylist,party_list,true,341,data/raw/pdfs/5_18_partylist/chaiyaphum_2_5_18_partylist.pdf,https://www.ect.go.th/ect_th/th/election-2026,Election day party-list ballot; must cover all polling stations
-
+﻿form_type,vote_type,required,expected_polling_stations,file_path,source_url,notes
+5_17_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-บัญชีรายชื่อ-นอกเขต.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_17,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_16_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-บัญชีรายชื่อ-นอกเขต.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_16,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-แบ่งเขต-นอกเขต.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.บ้านกอก-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.บ้านขาม-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.ละหาน-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.ส้มป่อย-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.หนองบัวบาน-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.หนองบัวโคก-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.หนองบัวใหญ่-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.หนองโดน-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ทต.จัตุรัส ทต.บ้านกอก-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอซับใหญ่/ท่ากูบ-001-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอซับใหญ่/ท่ากูบ-001-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ชีบน-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ตลาดแร้ง-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ตลาดแร้ง-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ทุ่งทอง-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_auto,auto,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.บ้านเขว้า-แบ่งเขต_บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ภูแลนคา-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ภูแลนคา-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ลุ่มน้ำชี-บัญชีรายชื่อ.pdf,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.ลุ่มลำชี แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.โนนแดง-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอบ้านเขว้า/ต.โนนแดง-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/กะฮาด-001-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/กะฮาด-001-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/ตาเนิน-001-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/ตาเนิน-001-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/รังงาม-001-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/รังงาม-001-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18_partylist,party_list,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/หนองฉิม-001-บัญชีรายชื่อ.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip
+5_18,constituency,true,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอเนินสง่า/หนองฉิม-001-แบ่งเขต.PDF,https://www.ect.go.th/ect_th/th/election-2026,Extracted from prepared Google Drive zip

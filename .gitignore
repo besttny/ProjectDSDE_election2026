@@ -3,12 +3,14 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.cache/
 .DS_Store
 
 .venv/
 venv/
 env/
 
+data/*.zip
 data/raw/images/*
 !data/raw/images/.gitkeep
 data/raw/ocr/*
