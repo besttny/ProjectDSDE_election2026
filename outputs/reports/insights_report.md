@@ -1,25 +1,25 @@
 # Insights Report
 
 ## Coverage
-- Parsed rows: 77
-- Parsed polling stations: 0
-- Forms present: 5_16, 5_16_partylist, 5_17, 5_17_partylist, 5_18_partylist
-- Total choice votes: 72
-- Rows requiring review: 71
+- Parsed rows: 81
+- Parsed polling stations: 1
+- Forms present: 5_16, 5_16_partylist, 5_17, 5_17_partylist, 5_18
+- Total choice votes: 334
+- Rows requiring review: 68
 
 ## Top Choices
+- นายเชิงชาย ชาลีรินทร์ / เพื่อไทย: 156 votes
+- นางสาววาสนา อยู่ภักดี / ประชาชน: 66 votes
 - (missing choice name) / C: 45 votes
-- ัตรี่ม่เลือกผูสมัครผูด 5บัตร / (missing party): 9 votes
-- (missing choice name) / e: 8 votes
-- (missing choice name) / oro: 4 votes
-- (missing choice name) / V...: 3 votes
+- นายประเสริฐศักดิ์ จำหนัก / ไทยก้าวใหม่: 13 votes
+- นายกวัสย์ หงษ์ไทย / เศรษฐกิจ: 12 votes
 
 ## Highest Station/Form Vote Totals
+- 5_18 station 1.0: 262 votes
 - 5_17_partylist station nan: 60 votes
 - 5_17 station nan: 10 votes
 - 5_16 station nan: 1 votes
 - 5_16_partylist station nan: 1 votes
-- 5_18_partylist station nan: 0 votes
 
 ## Candidate Insight Angles for Slides
 - Compare advance voting forms with election-day forms once all rows are parsed.

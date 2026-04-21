@@ -48,6 +48,13 @@ def _station_terms(config: ProjectConfig) -> list[str]:
     for column in ["district", "subdistrict"]:
         if column in frame.columns:
             terms.extend(str(value).strip() for value in frame[column] if str(value).strip())
+    if {"district", "subdistrict"}.issubset(frame.columns):
+        for _, row in frame.iterrows():
+            district = str(row["district"]).replace("อำเภอ", "").strip()
+            subdistrict = str(row["subdistrict"]).replace("ตำบล", "").strip()
+            if district and subdistrict:
+                terms.append(f"{subdistrict} {district}")
+                terms.append(f"{district} {subdistrict}")
     return sorted(set(terms))
 
 

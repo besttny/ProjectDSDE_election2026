@@ -145,9 +145,12 @@ Recommended process:
 2. Run the review queue and fix every `P0` row first.
 3. Use `data/processed/master_match_report.csv` to add repeatable aliases or
    manual corrections instead of silently editing final outputs.
-4. Manually review a sample of source PDF pages and enter the verified values
+4. For OCR rows that cannot be recovered reliably, enter the verified row in
+   `data/external/reviewed_rows.csv`; this replaces OCR rows for the same
+   source PDF page and form.
+5. Manually review a sample of source PDF pages and enter the verified values
    into `data/external/ground_truth_sample.csv`.
-5. Run the accuracy evaluator. Claim 99% only when
+6. Run the accuracy evaluator. Claim 99% only when
    `overall_field_accuracy` and `row_exact_accuracy` pass the configured
    `quality.target_accuracy` threshold.
 
@@ -204,6 +207,10 @@ party_name,พรคข้อมูล,party_name,พรรคข้อมูล
 ```
 
 The correction step updates matching rows and preserves row count.
+
+Use `data/external/reviewed_rows.csv` only after checking the source PDF page
+manually. Reviewed rows are source-page scoped and replace OCR rows for the same
+`source_pdf`, `source_page`, and `form_type`.
 
 ## Tests
 

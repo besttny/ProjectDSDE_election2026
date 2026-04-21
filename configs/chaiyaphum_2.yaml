@@ -16,6 +16,7 @@ paths:
   figures_dir: outputs/figures
   reports_dir: outputs/reports
   correction_file: data/external/manual_corrections.csv
+  reviewed_rows_file: data/external/reviewed_rows.csv
   ground_truth_file: data/external/ground_truth_sample.csv
   master_parties_file: data/external/master_parties.csv
   master_candidates_file: data/external/master_candidates.csv

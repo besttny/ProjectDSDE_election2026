@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.pipeline.config import ProjectConfig, load_config
+from src.pipeline.reviewed_rows import apply_reviewed_rows
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
 
 
@@ -127,6 +128,9 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
     parsed = load_parsed_results(config.path("parsed_dir"))
     cleaned = normalize_results(parsed)
     cleaned = apply_manual_corrections(cleaned, config.path("correction_file"))
+    if "reviewed_rows_file" in config.paths:
+        cleaned = apply_reviewed_rows(cleaned, config.path("reviewed_rows_file"))
+        cleaned = normalize_results(cleaned)
 
     results_path = config.output("election_results")
     cleaned.to_csv(results_path, index=False, encoding="utf-8-sig")
@@ -150,4 +154,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

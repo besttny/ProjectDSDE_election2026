@@ -40,6 +40,22 @@ def _bbox_min_y(line: dict[str, Any]) -> float:
     return float(min(point[1] for point in bbox)) if bbox else 0.0
 
 
+def _bbox_max_x(line: dict[str, Any]) -> float:
+    bbox = line.get("bbox") or []
+    return float(max(point[0] for point in bbox)) if bbox else 0.0
+
+
+def _bbox_max_y(line: dict[str, Any]) -> float:
+    bbox = line.get("bbox") or []
+    return float(max(point[1] for point in bbox)) if bbox else 0.0
+
+
+def _page_extent(lines: list[dict[str, Any]]) -> tuple[float, float]:
+    max_x = max((_bbox_max_x(line) for line in lines), default=1.0)
+    max_y = max((_bbox_max_y(line) for line in lines), default=1.0)
+    return (max(max_x, 1.0), max(max_y, 1.0))
+
+
 def sorted_text_lines(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(lines, key=_line_sort_key)
 
@@ -71,12 +87,12 @@ def _extract_metric(texts: list[str], keywords: tuple[str, ...]) -> int | None:
 def extract_metadata(texts: list[str]) -> dict[str, int | str | None]:
     joined = " ".join(texts)
     station_match = re.search(
-        r"(?:หน่วย(?:เลือกตั้ง)?(?:ที่)?|polling\s*station)\s*[:.]?\s*(\d+)",
+        r"(?:หน่วย(?:เลือกตั้ง)?(?:ที่)?|polling\s*station)[^\d]{0,20}(\d+)",
         normalize_digits(joined),
         flags=re.IGNORECASE,
     )
-    district_match = re.search(r"อำเภอ\s*([^\s]+)", joined)
-    subdistrict_match = re.search(r"ตำบล\s*([^\s]+)", joined)
+    district_match = re.search(r"อำเภอ(?:/เขต)?\s*([^\s]+)", joined)
+    subdistrict_match = re.search(r"ตำบล(?:/แขวง)?\s*([^\s]+)", joined)
     return {
         "polling_station_no": int(station_match.group(1)) if station_match else None,
         "district": district_match.group(1).strip() if district_match else "",
@@ -137,19 +153,39 @@ def _candidate_votes(text: str) -> int | None:
     return number
 
 
-def _group_table_lines(
-    lines: list[dict[str, Any]],
-    y_threshold: float = 35.0,
-) -> list[list[dict[str, Any]]]:
+def _is_table_header_noise(text: str) -> bool:
+    return any(
+        keyword in text
+        for keyword in [
+            "จำนวนคะแนน",
+            "หมายเลข",
+            "ชื่อตัว",
+            "ชื่อสกุล",
+            "สังกัด",
+            "ได้คะแนน",
+            "ผู้สมัคร",
+            "พรรคการเมือง",
+            "ให้กรอก",
+            "รวมคะแนน",
+        ]
+    )
+
+
+def _group_table_lines(lines: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    page_width, page_height = _page_extent(lines)
+    y_threshold = max(page_height * 0.028, 22.0)
     candidates = [
         line
         for line in sorted_text_lines(lines)
-        if 900 <= _bbox_min_y(line) <= 1750 and not _is_noise(str(line.get("text", "")))
+        if page_height * 0.60 <= _bbox_min_y(line) <= page_height * 1.01
+        and not _is_noise(str(line.get("text", "")))
+        and not _is_table_header_noise(str(line.get("text", "")))
     ]
     anchors = [
         line
         for line in candidates
-        if _bbox_min_x(line) < 320 and _candidate_number(str(line.get("text", ""))) is not None
+        if (_bbox_min_x(line) / page_width) < 0.24
+        and _candidate_number(str(line.get("text", ""))) is not None
     ]
 
     groups: list[list[dict[str, Any]]] = []
@@ -163,7 +199,7 @@ def _group_table_lines(
                 continue
             line_number = (
                 _candidate_number(str(line.get("text", "")))
-                if _bbox_min_x(line) < 320
+                if (_bbox_min_x(line) / page_width) < 0.24
                 else None
             )
             if line_number is not None and line_number != anchor_number:
@@ -185,32 +221,41 @@ def parse_choice_table(
     vote_type: str,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    page_width, _ = _page_extent(lines)
     for group in _group_table_lines(lines):
         ordered = sorted(group, key=_bbox_min_x)
         number_candidates = [
             _candidate_number(str(line.get("text", "")))
             for line in ordered
-            if _bbox_min_x(line) < 320
+            if (_bbox_min_x(line) / page_width) < 0.24
         ]
         choice_no = next((number for number in number_candidates if number is not None), None)
         if choice_no is None:
             continue
 
-        label_tokens = [
+        name_tokens = [
             str(line.get("text", "")).strip()
             for line in ordered
-            if 300 <= _bbox_min_x(line) < 680
+            if 0.22 <= (_bbox_min_x(line) / page_width) < 0.44
             and not _is_noise(str(line.get("text", "")))
             and _candidate_votes(str(line.get("text", ""))) is None
         ]
-        label = " ".join(label_tokens).strip()
-        if not label:
+        party_tokens = [
+            str(line.get("text", "")).strip()
+            for line in ordered
+            if 0.44 <= (_bbox_min_x(line) / page_width) < 0.62
+            and not _is_noise(str(line.get("text", "")))
+            and _candidate_votes(str(line.get("text", ""))) is None
+        ]
+        name_label = " ".join(name_tokens).strip()
+        party_label = " ".join(party_tokens).strip()
+        if not name_label and not party_label:
             continue
 
         vote_candidates: list[tuple[float, int]] = []
         for line in ordered:
             x = _bbox_min_x(line)
-            if x < 680:
+            if (x / page_width) < 0.60:
                 continue
             votes = _candidate_votes(str(line.get("text", "")))
             if votes is not None:
@@ -219,10 +264,10 @@ def parse_choice_table(
 
         if vote_type == "party_list":
             choice_name = ""
-            party_name = label
+            party_name = " ".join(part for part in [name_label, party_label] if part).strip()
         else:
-            choice_name = label
-            party_name = ""
+            choice_name = name_label
+            party_name = party_label
 
         rows.append(
             {
@@ -245,7 +290,10 @@ def infer_form_and_vote_type(
         return form_type, vote_type
 
     joined = " ".join(texts)
-    if "บัญชีรายชื่อ" in joined:
+    header = " ".join(texts[:12])
+    if "แบ่งเขต" in header:
+        return "5_18", "constituency"
+    if "บัญชีรายชื่อ" in header and "ผู้มีสิทธิ" not in header:
         return "5_18_partylist", "party_list"
     return "5_18", "constituency"
 

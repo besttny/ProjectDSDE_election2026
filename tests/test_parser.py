@@ -1,4 +1,9 @@
-from src.ocr.parser import parse_choice_line, parse_choice_table, parse_ocr_payload
+from src.ocr.parser import (
+    infer_form_and_vote_type,
+    parse_choice_line,
+    parse_choice_table,
+    parse_ocr_payload,
+)
 
 
 def test_parse_choice_line_with_party_and_votes():
@@ -51,10 +56,10 @@ def test_parse_ocr_payload_extracts_metadata_and_rows():
 
 def test_parse_choice_table_from_positioned_ocr_lines():
     lines = [
-        {"text": "๒", "confidence": 0.9, "bbox": [[220, 1110], [240, 1110]]},
+        {"text": "๒", "confidence": 0.9, "bbox": [[120, 1110], [140, 1110]]},
         {"text": "เพื่อชาติไทย", "confidence": 0.9, "bbox": [[370, 1091], [500, 1091]]},
         {"text": "15", "confidence": 0.8, "bbox": [[720, 1097], [760, 1097]]},
-        {"text": "๓", "confidence": 0.9, "bbox": [[220, 1168], [240, 1168]]},
+        {"text": "๓", "confidence": 0.9, "bbox": [[120, 1168], [140, 1168]]},
         {"text": "ใหม่", "confidence": 0.9, "bbox": [[370, 1151], [500, 1151]]},
         {"text": "...", "confidence": 0.6, "bbox": [[720, 1152], [760, 1152]]},
     ]
@@ -65,3 +70,15 @@ def test_parse_choice_table_from_positioned_ocr_lines():
         {"choice_no": 2, "choice_name": "", "party_name": "เพื่อชาติไทย", "votes": 15},
         {"choice_no": 3, "choice_name": "", "party_name": "ใหม่", "votes": None},
     ]
+
+
+def test_infer_5_18_constituency_ignores_voter_list_phrase():
+    texts = [
+        "รายงานผลการนับคะแนนสมาชิกสภาผู้แทนราษฎรแบบแบ่งเขตเลือกตั้ง",
+        "จำนวนผู้มีสิทธิเลือกตั้งตามบัญชีรายชื่อผู้มีสิทธิเลือกตั้ง",
+    ]
+
+    assert infer_form_and_vote_type(texts, form_type="5_18_auto", vote_type="auto") == (
+        "5_18",
+        "constituency",
+    )
