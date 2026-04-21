@@ -81,6 +81,13 @@ def _add_suggestion(
     )
 
 
+def _clean_part(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    text = str(value).strip()
+    return "" if text.lower() == "nan" else text
+
+
 def build_master_match_report(config: ProjectConfig) -> pd.DataFrame:
     results_path = config.output("election_results")
     if not results_path.exists():
@@ -111,7 +118,10 @@ def build_master_match_report(config: ProjectConfig) -> pd.DataFrame:
         )
         station_observed = " ".join(
             part
-            for part in [str(record.get("subdistrict", "")).strip(), str(record.get("district", "")).strip()]
+            for part in [
+                _clean_part(record.get("subdistrict", "")),
+                _clean_part(record.get("district", "")),
+            ]
             if part
         )
         _add_suggestion(

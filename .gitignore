@@ -11,6 +11,7 @@ venv/
 env/
 
 data/*.zip
+data/external/official_sources/*.pdf
 data/raw/images/*
 !data/raw/images/.gitkeep
 data/raw/ocr/*

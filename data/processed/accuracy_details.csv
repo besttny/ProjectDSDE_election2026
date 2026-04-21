@@ -1,1 +1,43 @@
 ﻿ballot_type,form_type,station_id,choice_no,field,expected_value,predicted_value,match,status
+constituency,518,1,1,votes,13,,False,missing_prediction
+constituency,518,1,1,total_ballots,291,,False,missing_prediction
+constituency,518,1,1,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,1,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,1,name,นายประเสริฐศักดิ์ จำหนัก,,False,missing_prediction
+constituency,518,1,1,party,ไทยก้าวใหม่,,False,missing_prediction
+constituency,518,1,2,votes,66,,False,missing_prediction
+constituency,518,1,2,total_ballots,291,,False,missing_prediction
+constituency,518,1,2,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,2,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,2,name,นางสาววาสนา อยู่ภักดี,,False,missing_prediction
+constituency,518,1,2,party,ประชาชน,,False,missing_prediction
+constituency,518,1,3,votes,156,,False,missing_prediction
+constituency,518,1,3,total_ballots,291,,False,missing_prediction
+constituency,518,1,3,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,3,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,3,name,นายเชิงชาย ชาลีรินทร์,,False,missing_prediction
+constituency,518,1,3,party,เพื่อไทย,,False,missing_prediction
+constituency,518,1,4,votes,7,,False,missing_prediction
+constituency,518,1,4,total_ballots,291,,False,missing_prediction
+constituency,518,1,4,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,4,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,4,name,นายณรงค์ แขนอก,,False,missing_prediction
+constituency,518,1,4,party,ประชาธิปัตย์,,False,missing_prediction
+constituency,518,1,5,votes,5,,False,missing_prediction
+constituency,518,1,5,total_ballots,291,,False,missing_prediction
+constituency,518,1,5,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,5,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,5,name,นายทัศนัย สุขประสาร,,False,missing_prediction
+constituency,518,1,5,party,ภูมิใจไทย,,False,missing_prediction
+constituency,518,1,6,votes,3,,False,missing_prediction
+constituency,518,1,6,total_ballots,291,,False,missing_prediction
+constituency,518,1,6,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,6,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,6,name,นายโสโชค สู้โนนตาด,,False,missing_prediction
+constituency,518,1,6,party,รวมไทยสร้างชาติ,,False,missing_prediction
+constituency,518,1,8,votes,12,,False,missing_prediction
+constituency,518,1,8,total_ballots,291,,False,missing_prediction
+constituency,518,1,8,invalid_ballots,19,,False,missing_prediction
+constituency,518,1,8,no_vote_ballots,10,,False,missing_prediction
+constituency,518,1,8,name,นายกวัสย์ หงษ์ไทย,,False,missing_prediction
+constituency,518,1,8,party,เศรษฐกิจ,,False,missing_prediction

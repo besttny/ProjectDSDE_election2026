@@ -1,1 +1,8 @@
 ballot_type,form_type,station_id,choice_no,votes,total_ballots,invalid_ballots,no_vote_ballots,name,party,source_page,reviewer_notes
+constituency,518,1,1,13,291,19,10,นายประเสริฐศักดิ์ จำหนัก,ไทยก้าวใหม่,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1
+constituency,518,1,2,66,291,19,10,นางสาววาสนา อยู่ภักดี,ประชาชน,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1
+constituency,518,1,3,156,291,19,10,นายเชิงชาย ชาลีรินทร์,เพื่อไทย,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1
+constituency,518,1,4,7,291,19,10,นายณรงค์ แขนอก,ประชาธิปัตย์,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1
+constituency,518,1,5,5,291,19,10,นายทัศนัย สุขประสาร,ภูมิใจไทย,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1
+constituency,518,1,6,3,291,19,10,นายโสโชค สู้โนนตาด,รวมไทยสร้างชาติ,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1
+constituency,518,1,8,12,291,19,10,นายกวัสย์ หงษ์ไทย,เศรษฐกิจ,1,Verified manually from official ECT 5/18 PDF: ต.กุดน้ำใส page 1

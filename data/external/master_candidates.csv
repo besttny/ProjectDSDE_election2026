@@ -1,1 +1,8 @@
-form_type,candidate_no,canonical_name,party_name,aliases
+form_type,candidate_no,canonical_name,party_name,aliases,source_pdf,source_page,source_note
+518,1,นายประเสริฐศักดิ์ จำหนัก,ไทยก้าวใหม่,ประเสริฐศักดิ์ จำหนัก,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+518,2,นางสาววาสนา อยู่ภักดี,ประชาชน,วาสนา อยู่ภักดี,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+518,3,นายเชิงชาย ชาลีรินทร์,เพื่อไทย,เชิงชาย ชาลีรินทร์,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+518,4,นายณรงค์ แขนอก,ประชาธิปัตย์,ณรงค์ แขนอก,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+518,5,นายทัศนัย สุขประสาร,ภูมิใจไทย,ทัศนัย สุขประสาร,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+518,6,นายโสโชค สู้โนนตาด,รวมไทยสร้างชาติ,โสโชค สู้โนนตาด,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+518,8,นายกวัสย์ หงษ์ไทย,เศรษฐกิจ,กวัสย์ หงษ์ไทย,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
