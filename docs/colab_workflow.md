@@ -39,11 +39,12 @@ RUN_REPORTS_AFTER_EACH_BATCH = False
 CHECKPOINT_EACH_BATCH = False
 ```
 
-`accuracy` uses `dpi=300`, `device=gpu:0`, `enable_hpi=True`,
-`precision=fp32`, `text_det_limit_side_len=1920`, and full zone OCR
-(`metadata`, `summary`, and `table`). Speed still comes from Colab local
-scratch storage and building reports only once at the end. If the runtime is
-unstable, set `CHECKPOINT_EACH_BATCH = True`; it is slower but writes
+`accuracy` uses `dpi=300`, `device=gpu:0`, `precision=fp32`,
+`text_det_limit_side_len=1920`, and full zone OCR (`metadata`, `summary`, and
+`table`). `enable_hpi` is disabled by default because PaddleOCR needs the
+optional `ultra-infer` package for that engine. Speed still comes from Colab
+local scratch storage and building reports only once at the end. If the runtime
+is unstable, set `CHECKPOINT_EACH_BATCH = True`; it is slower but writes
 `ocr_checkpoint_latest.zip` for the next run.
 
 ## 2. Install Dependencies

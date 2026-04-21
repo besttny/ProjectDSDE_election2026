@@ -40,7 +40,7 @@ ocr:
       - table
   paddle:
     device: gpu:0
-    enable_hpi: true
+    enable_hpi: false
     use_tensorrt: false
     precision: fp32
     text_detection_model_name: PP-OCRv5_mobile_det

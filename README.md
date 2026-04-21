@@ -140,8 +140,9 @@ automatic zone OCR. If Colab
 runs out of memory, reduce the batch range first before lowering DPI.
 For the A100 accuracy-first full Colab run, use `02_ocr_full_run_colab.ipynb`
 with local scratch enabled. Its `accuracy` profile uses DPI `300`,
-`device=gpu:0`, high-performance inference, and full `metadata + summary +
-table` zone OCR, then builds reports once at the end.
+`device=gpu:0`, `precision=fp32`, and full `metadata + summary + table` zone
+OCR, then builds reports once at the end. HPI is disabled by default because
+PaddleOCR requires the optional `ultra-infer` package for that engine.
 
 Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
 and time. The local machine only needs the parsed/raw OCR artifacts to rebuild
