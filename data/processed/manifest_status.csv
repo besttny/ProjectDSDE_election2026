@@ -1,0 +1,7 @@
+form_type,vote_type,required,expected_polling_stations,file_path,exists,sha256,source_url,notes
+5_16,constituency,True,,/Users/pornmongkol/Documents/ProjectDSDE_election2026/data/raw/pdfs/5_16/chaiyaphum_2_5_16.pdf,False,,https://www.ect.go.th/ect_th/th/election-2026,Advance voting in-district constituency ballot
+5_16_partylist,party_list,True,,/Users/pornmongkol/Documents/ProjectDSDE_election2026/data/raw/pdfs/5_16_partylist/chaiyaphum_2_5_16_partylist.pdf,False,,https://www.ect.go.th/ect_th/th/election-2026,Advance voting in-district party-list ballot
+5_17,constituency,True,,/Users/pornmongkol/Documents/ProjectDSDE_election2026/data/raw/pdfs/5_17/chaiyaphum_2_5_17.pdf,False,,https://www.ect.go.th/ect_th/th/election-2026,Advance voting out-of-district constituency ballot
+5_17_partylist,party_list,True,,/Users/pornmongkol/Documents/ProjectDSDE_election2026/data/raw/pdfs/5_17_partylist/chaiyaphum_2_5_17_partylist.pdf,False,,https://www.ect.go.th/ect_th/th/election-2026,Advance voting out-of-district party-list ballot
+5_18,constituency,True,341,/Users/pornmongkol/Documents/ProjectDSDE_election2026/data/raw/pdfs/5_18/chaiyaphum_2_5_18.pdf,False,,https://www.ect.go.th/ect_th/th/election-2026,Election day constituency ballot; must cover all polling stations
+5_18_partylist,party_list,True,341,/Users/pornmongkol/Documents/ProjectDSDE_election2026/data/raw/pdfs/5_18_partylist/chaiyaphum_2_5_18_partylist.pdf,False,,https://www.ect.go.th/ect_th/th/election-2026,Election day party-list ballot; must cover all polling stations

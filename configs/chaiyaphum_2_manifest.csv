@@ -1,0 +1,8 @@
+form_type,vote_type,required,expected_polling_stations,file_path,source_url,notes
+5_16,constituency,true,,data/raw/pdfs/5_16/chaiyaphum_2_5_16.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting in-district constituency ballot
+5_16_partylist,party_list,true,,data/raw/pdfs/5_16_partylist/chaiyaphum_2_5_16_partylist.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting in-district party-list ballot
+5_17,constituency,true,,data/raw/pdfs/5_17/chaiyaphum_2_5_17.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting out-of-district constituency ballot
+5_17_partylist,party_list,true,,data/raw/pdfs/5_17_partylist/chaiyaphum_2_5_17_partylist.pdf,https://www.ect.go.th/ect_th/th/election-2026,Advance voting out-of-district party-list ballot
+5_18,constituency,true,341,data/raw/pdfs/5_18/chaiyaphum_2_5_18.pdf,https://www.ect.go.th/ect_th/th/election-2026,Election day constituency ballot; must cover all polling stations
+5_18_partylist,party_list,true,341,data/raw/pdfs/5_18_partylist/chaiyaphum_2_5_18_partylist.pdf,https://www.ect.go.th/ect_th/th/election-2026,Election day party-list ballot; must cover all polling stations
+

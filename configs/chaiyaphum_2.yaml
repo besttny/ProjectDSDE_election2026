@@ -1,0 +1,38 @@
+project:
+  name: Data Science for Thailand Election 2026
+  province: ชัยภูมิ
+  constituency_no: 2
+  expected_polling_stations: 341
+  ect_source_url: https://www.ect.go.th/ect_th/th/election-2026
+
+paths:
+  manifest: configs/chaiyaphum_2_manifest.csv
+  raw_pdf_dir: data/raw/pdfs
+  raw_image_dir: data/raw/images
+  raw_ocr_dir: data/raw/ocr
+  parsed_dir: data/processed/parsed
+  processed_dir: data/processed
+  external_dir: data/external
+  figures_dir: outputs/figures
+  reports_dir: outputs/reports
+  correction_file: data/external/manual_corrections.csv
+
+ocr:
+  primary_engine: paddleocr
+  fallback_engine: easyocr
+  languages:
+    - th
+    - en
+  dpi: 300
+  image_format: png
+  confidence_threshold: 0.65
+
+outputs:
+  election_results: data/processed/election_results_long.csv
+  polling_station_summary: data/processed/polling_station_summary.csv
+  validation_report: data/processed/validation_report.csv
+  validation_report_md: outputs/reports/validation_report.md
+  dashboard_dataset: data/processed/dashboard_dataset.parquet
+  dashboard_dataset_csv: data/processed/dashboard_dataset.csv
+  insights_report: outputs/reports/insights_report.md
+
