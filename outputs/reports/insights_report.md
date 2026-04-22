@@ -8,7 +8,7 @@
 - Rows requiring review: 6,358
 
 ## Top Choices
-- นายกวัสย์ หงษ์ไทย / เศรษฐกิจ: 3,013,992,790 votes
+- นายกวัสย์ หงษ์ไทย / เศรษฐกิจ: 3,013,992,812 votes
 - (missing choice name) / เพื่อชีวิตใหม่: 2,150,218,232 votes
 - (missing choice name) / วิชชั่นใหม่: 2,150,213,862 votes
 - (missing choice name) / มิติใหม่: 290,214,701 votes

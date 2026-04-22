@@ -48,3 +48,27 @@ def test_validate_dataframe_flags_duplicates_and_missing_station_coverage():
     assert report.loc["duplicate_choice_rows", "status"] == "fail"
     assert report.loc["ballot_accounting", "status"] == "fail"
     assert report.loc["needs_review_rows", "status"] == "warn"
+
+
+def test_validate_dataframe_checks_candidate_master_scope_and_one_person_rule(tmp_path: Path):
+    candidate_master = tmp_path / "master_candidates.csv"
+    candidate_master.write_text(
+        "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases\n"
+        "ชัยภูมิ,2,518,1,นาย ก,พรรค ก,\n"
+        "ชัยภูมิ,2,518,1,นาย ข,พรรค ข,\n"
+        "ชัยภูมิ,3,518,1,นาย ค,พรรค ค,\n"
+        "ชัยภูมิ,4,518,4,นาย ก,พรรค ง,\n",
+        encoding="utf-8",
+    )
+
+    report = validate_dataframe(
+        pd.DataFrame(),
+        manifest_entries=[],
+        expected_polling_stations=341,
+        candidate_master_path=candidate_master,
+    ).set_index("check")
+
+    assert report.loc["candidate_master_schema", "status"] == "pass"
+    assert report.loc["candidate_master_scoped_keys", "status"] == "fail"
+    assert report.loc["candidate_master_one_person_one_constituency", "status"] == "fail"
+    assert report.loc["candidate_master_candidate_no_scoped", "status"] == "pass"

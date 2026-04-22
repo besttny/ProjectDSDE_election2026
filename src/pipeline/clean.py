@@ -9,16 +9,6 @@ from src.pipeline.reviewed_rows import apply_reviewed_rows
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
 from src.pipeline.station_inference import apply_station_inference
 
-FORM_CODE_MAP = {
-    "5_16": "516",
-    "5_17": "517",
-    "5_18": "518",
-    "5_16_partylist": "516_bch",
-    "5_17_partylist": "517_bch",
-    "5_18_partylist": "518_bch",
-}
-
-
 def load_parsed_results(parsed_dir: Path) -> pd.DataFrame:
     files = sorted(parsed_dir.glob("*.csv"))
     if not files:
@@ -88,20 +78,27 @@ def _normalize_key_number(value: object) -> str:
     return "" if pd.isna(value) else str(value).strip()
 
 
-def _candidate_master_map(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+def _normalize_key_text(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).replace("\ufeff", "").strip()
+
+
+def _candidate_master_map(path: Path) -> dict[tuple[str, str, str], dict[str, str]]:
     if not path.exists():
         return {}
     frame = pd.read_csv(path).fillna("")
-    required = {"form_type", "candidate_no", "canonical_name", "party_name"}
+    required = {"province", "constituency_no", "candidate_no", "canonical_name", "party_name"}
     if not required.issubset(frame.columns):
         return {}
-    mapping: dict[tuple[str, str], dict[str, str]] = {}
+    mapping: dict[tuple[str, str, str], dict[str, str]] = {}
     for _, row in frame.iterrows():
-        form_code = str(row["form_type"]).strip()
+        province = _normalize_key_text(row["province"])
+        constituency_no = _normalize_key_number(row["constituency_no"])
         choice_no = _normalize_key_number(row["candidate_no"])
-        if not form_code or not choice_no:
+        if not province or not constituency_no or not choice_no:
             continue
-        mapping[(form_code, choice_no)] = {
+        mapping[(province, constituency_no, choice_no)] = {
             "choice_name": str(row["canonical_name"]).strip(),
             "party_name": str(row["party_name"]).strip(),
         }
@@ -138,9 +135,13 @@ def apply_master_names(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
         choice_no = _normalize_key_number(row.get("choice_no", ""))
         if not choice_no:
             continue
-        form_code = FORM_CODE_MAP.get(form_type, form_type)
         if form_type in {"5_16", "5_17", "5_18"}:
-            candidate = candidate_map.get((form_code, choice_no))
+            province = _normalize_key_text(row.get("province", "")) or _normalize_key_text(config.province)
+            constituency_no = (
+                _normalize_key_number(row.get("constituency_no", ""))
+                or _normalize_key_number(config.constituency_no)
+            )
+            candidate = candidate_map.get((province, constituency_no, choice_no))
             if candidate:
                 if candidate["choice_name"]:
                     filled.at[index, "choice_name"] = candidate["choice_name"]

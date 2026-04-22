@@ -10,6 +10,13 @@ from src.pipeline.config import ProjectConfig, load_config
 from src.pipeline.manifest import ManifestEntry, load_manifest, write_manifest_status
 from src.pipeline.schema import ELECTION_DAY_FORMS, REQUIRED_FORMS, RESULT_COLUMNS
 
+CANDIDATE_MASTER_SCOPE_COLUMNS = ["province", "constituency_no", "candidate_no"]
+CANDIDATE_MASTER_REQUIRED_COLUMNS = [
+    *CANDIDATE_MASTER_SCOPE_COLUMNS,
+    "canonical_name",
+    "party_name",
+]
+
 
 def _row(check: str, status: str, severity: str, details: str) -> dict[str, str]:
     return {
@@ -26,11 +33,121 @@ def _read_results(path: Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def _normalize_text_key(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).replace("\ufeff", "").strip()
+
+
+def _normalize_number_key(value: object) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.notna(numeric) and float(numeric).is_integer():
+        return str(int(numeric))
+    return _normalize_text_key(value)
+
+
+def _candidate_master_checks(candidate_master_path: Path | None) -> list[dict[str, str]]:
+    if candidate_master_path is None:
+        return []
+    if not candidate_master_path.exists():
+        return [
+            _row(
+                "candidate_master_schema",
+                "fail",
+                "critical",
+                f"Candidate master file not found: {candidate_master_path}",
+            )
+        ]
+
+    frame = pd.read_csv(candidate_master_path).fillna("")
+    missing_columns = [
+        column for column in CANDIDATE_MASTER_REQUIRED_COLUMNS if column not in frame.columns
+    ]
+    checks = [
+        _row(
+            "candidate_master_schema",
+            "fail" if missing_columns else "pass",
+            "critical",
+            (
+                f"Missing columns: {', '.join(missing_columns)}"
+                if missing_columns
+                else "Candidate master is scoped by province + constituency_no + candidate_no"
+            ),
+        )
+    ]
+    if missing_columns:
+        return checks
+
+    scoped = frame.copy()
+    scoped["_province_key"] = scoped["province"].map(_normalize_text_key)
+    scoped["_constituency_key"] = scoped["constituency_no"].map(_normalize_number_key)
+    scoped["_candidate_key"] = scoped["candidate_no"].map(_normalize_number_key)
+    scoped["_candidate_name_key"] = scoped["canonical_name"].map(_normalize_text_key)
+    scoped["_district_key"] = scoped["_province_key"] + "|" + scoped["_constituency_key"]
+
+    missing_key_rows = int(
+        (
+            (scoped["_province_key"] == "")
+            | (scoped["_constituency_key"] == "")
+            | (scoped["_candidate_key"] == "")
+        ).sum()
+    )
+    duplicate_key_rows = int(
+        scoped.duplicated(
+            subset=["_province_key", "_constituency_key", "_candidate_key"],
+            keep=False,
+        ).sum()
+    )
+    checks.append(
+        _row(
+            "candidate_master_scoped_keys",
+            "fail" if missing_key_rows or duplicate_key_rows else "pass",
+            "critical",
+            (
+                f"{missing_key_rows} rows have incomplete scope; "
+                f"{duplicate_key_rows} rows duplicate province + constituency_no + candidate_no"
+            ),
+        )
+    )
+
+    candidate_names = scoped[scoped["_candidate_name_key"] != ""]
+    repeated_people = 0
+    if not candidate_names.empty:
+        person_scope_counts = candidate_names.groupby("_candidate_name_key")["_district_key"].nunique()
+        repeated_people = int((person_scope_counts > 1).sum())
+    checks.append(
+        _row(
+            "candidate_master_one_person_one_constituency",
+            "fail" if repeated_people else "pass",
+            "critical",
+            f"{repeated_people} candidate names appear in more than one province + constituency_no",
+        )
+    )
+
+    unscoped_reuse = 0
+    if not scoped.empty:
+        number_scope_counts = scoped.groupby("_candidate_key")["_district_key"].nunique()
+        unscoped_reuse = int((number_scope_counts > 1).sum())
+    checks.append(
+        _row(
+            "candidate_master_candidate_no_scoped",
+            "pass",
+            "major",
+            (
+                f"{unscoped_reuse} candidate numbers are reused across constituencies; "
+                "mapping uses province + constituency_no + candidate_no, not candidate_no alone"
+            ),
+        )
+    )
+    return checks
+
+
 def validate_dataframe(
     df: pd.DataFrame,
     *,
     manifest_entries: list[ManifestEntry],
     expected_polling_stations: int,
+    candidate_master_path: Path | None = None,
 ) -> pd.DataFrame:
     report: list[dict[str, str]] = []
 
@@ -65,6 +182,7 @@ def validate_dataframe(
             f"Missing forms: {', '.join(missing_forms)}" if missing_forms else "All required forms found",
         )
     )
+    report.extend(_candidate_master_checks(candidate_master_path))
 
     for form in ELECTION_DAY_FORMS:
         form_df = df[df.get("form_type", pd.Series(dtype=str)).astype(str) == form]
@@ -189,6 +307,11 @@ def validate_results(config: ProjectConfig) -> tuple[Path, Path]:
         df,
         manifest_entries=entries,
         expected_polling_stations=config.expected_polling_stations,
+        candidate_master_path=(
+            config.path("master_candidates_file")
+            if "master_candidates_file" in config.paths
+            else None
+        ),
     )
     csv_path = config.output("validation_report")
     report.to_csv(csv_path, index=False, encoding="utf-8-sig")

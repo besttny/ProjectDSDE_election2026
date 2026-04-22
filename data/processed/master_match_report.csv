@@ -1,44 +1,16 @@
 ﻿field,observed_value,suggested_value,score,status,form_type,polling_station_no,choice_no,source_pdf,source_page
-choice_name,คณะกรรมการนับคะแนนบัตรเลือกตั้งในเขตเลือกตั้ง ได้ดำเนินการนับบัตรเลือกตั้งตามข้อ,โสโชค สู้โนนตาด,0.1075,no_confident_match,5_16,,2,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-แบ่งเขต-นอกเขต.pdf,1
 choice_name,DOS,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_16,,7,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-แบ่งเขต-นอกเขต.pdf,1
 party_name,A,กรีน,0.0,no_confident_match,5_16,,7,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-แบ่งเขต-นอกเขต.pdf,1
-choice_name,Ts DOS,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_16,,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-แบ่งเขต-นอกเขต.pdf,1
-party_name,A A,กรีน,0.0,no_confident_match,5_16,,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส.5_16-แบ่งเขต-นอกเขต.pdf,1
-choice_name,ชารs ทานOa,เชิงชาย ชาลีรินทร์,0.3077,no_confident_match,5_17,2.0,3,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-party_name,oย,ไทยชนะ,0.25,no_confident_match,5_17,2.0,3,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-choice_name,ทานOa,นายณรงค์ แขนอก,0.2222,no_confident_match,5_17,2.0,4,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-choice_name,u ยงm,กวัสย์ หงษ์ไทย,0.2353,no_confident_match,5_17,2.0,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-choice_name,ชารs ชารns ทานOa ทานOด,เชิงชาย ชาลีรินทร์,0.3333,no_confident_match,5_17,2.0,6,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-party_name,oย,ไทยชนะ,0.25,no_confident_match,5_17,2.0,6,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
 party_name,Aรนจก,กรีน,0.4444,no_confident_match,5_17,2.0,7,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-party_name,Aรนจก,กรีน,0.4444,no_confident_match,5_17,2.0,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
 choice_name,ชารs,เชิงชาย ชาลีรินทร์,0.2857,no_confident_match,5_17,2.0,22,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
 party_name,sา oย,ประชาไทย,0.3333,no_confident_match,5_17,2.0,22,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
 choice_name,ทานOa ทานOด,วาสนา อยู่ภักดี,0.3333,no_confident_match,5_17,2.0,53,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,15
-choice_name,หowne ป,กวัสย์ หงษ์ไทย,0.1053,no_confident_match,5_17,7.0,2,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
-party_name,suga,กรีน,0.0,no_confident_match,5_17,7.0,2,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
-choice_name,ศฝะns โนonด,โสโชค สู้โนนตาด,0.25,no_confident_match,5_17,7.0,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
-party_name,มยานน,ไทยก้าวหน้า,0.375,no_confident_match,5_17,7.0,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
-choice_name,หowne,กวัสย์ หงษ์ไทย,0.1111,no_confident_match,5_17,7.0,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
-party_name,suga,กรีน,0.0,no_confident_match,5_17,7.0,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
 choice_name,หowne หobne ป ป,กวัสย์ หงษ์ไทย,0.08,no_confident_match,5_17,7.0,9,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
 party_name,oug suga,กรีน,0.0,no_confident_match,5_17,7.0,9,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,3
-choice_name,MsnO Ms O snavo srasvs ปx,ทัศนัย สุขประสาร,0.0571,no_confident_match,5_17,700.0,4,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,13
-party_name,ns ns,กรีน,0.0,no_confident_match,5_17,700.0,4,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,13
-choice_name,msuon srasvs,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_17,700.0,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,13
-party_name,ns,กรีน,0.0,no_confident_match,5_17,700.0,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,13
 choice_name,นกs un,ณรงค์ แขนอก,0.2667,no_confident_match,5_17,700.0,7,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,11
-choice_name,นกs un,ณรงค์ แขนอก,0.2667,no_confident_match,5_17,700.0,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,11
 choice_name,นnd สาปรS นnd สปรลS,นายเชิงชาย ชาลีรินทร์,0.2778,no_confident_match,5_17,700.0,40,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,11
 party_name,goTd goTwd,กรีน,0.0,no_confident_match,5_17,700.0,40,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,11
-choice_name,sd,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_17,,1,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,9
-party_name,กูไ กู,ภูมิใจไทย,0.2857,no_confident_match,5_17,,2,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,7
-choice_name,นาขณรศ เนOก ปรชาชิขย,นายณรงค์ แขนอก,0.3871,no_confident_match,5_17,,3,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,5
-choice_name,sd h,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_17,,4,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,9
-choice_name,sd h,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_17,,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,9
-party_name,กูไ,ภูมิใจไทย,0.3333,no_confident_match,5_17,,5,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,9
 choice_name,ssn,กวัสย์ หงษ์ไทย,0.0,no_confident_match,5_17,,7,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,9
-choice_name,นายกอลย์ ท เกรบจภา,นายกวัสย์ หงษ์ไทย,0.4375,no_confident_match,5_17,,8,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,5
 party_name,b,กรีน,0.0,no_confident_match,5_17,,11,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,7
 choice_name,SBคSON,ณรงค์ แขนอก,0.125,no_confident_match,5_17,,55,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,7
 party_name,กูไ,ภูมิใจไทย,0.3333,no_confident_match,5_17,,55,/content/ProjectDSDE_election2026/data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/02-แบบ ส.ส. 5_17-แบ่งเขต-นอกเขต.pdf,7
