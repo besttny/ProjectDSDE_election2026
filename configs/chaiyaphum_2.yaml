@@ -17,6 +17,7 @@ paths:
   reports_dir: outputs/reports
   correction_file: data/external/manual_corrections.csv
   reviewed_rows_file: data/external/reviewed_rows.csv
+  reviewed_vote_cells_file: data/external/reviewed_vote_cells.csv
   ground_truth_file: data/external/ground_truth_sample.csv
   master_parties_file: data/external/master_parties.csv
   master_candidates_file: data/external/master_candidates.csv
@@ -71,3 +72,4 @@ outputs:
   master_match_report: data/processed/master_match_report.csv
   insights_report: outputs/reports/insights_report.md
   p0_fallback_targets: data/processed/p0_fallback_targets.csv
+  p0_digit_crops_manifest: data/processed/p0_digit_crops_manifest.csv

@@ -7,18 +7,10 @@ from typing import Any
 
 import pandas as pd
 
+from src.ocr.digits import extract_digit_cell_value, extract_first_int, normalize_thai_digits
 from src.pipeline.schema import RESULT_COLUMNS
 
-THAI_DIGITS = str.maketrans("๐๑๒๓๔๕๖๗๘๙", "0123456789")
-
-
-def normalize_digits(value: str) -> str:
-    return value.translate(THAI_DIGITS).replace(",", "")
-
-
-def extract_first_int(text: str) -> int | None:
-    match = re.search(r"\d[\d,]*", normalize_digits(text))
-    return int(match.group(0).replace(",", "")) if match else None
+normalize_digits = normalize_thai_digits
 
 
 def _line_sort_key(line: dict[str, Any]) -> tuple[float, float]:
@@ -152,7 +144,7 @@ def _candidate_number(text: str) -> int | None:
 
 
 def _candidate_votes(text: str) -> int | None:
-    number = extract_first_int(text)
+    number = extract_digit_cell_value(text)
     if number is None or number < 0:
         return None
     return number

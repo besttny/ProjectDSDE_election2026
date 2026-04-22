@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.pipeline.config import ProjectConfig, load_config
-from src.pipeline.reviewed_rows import apply_reviewed_rows
+from src.pipeline.reviewed_rows import apply_reviewed_rows, apply_reviewed_vote_cells
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
 from src.pipeline.station_inference import apply_station_inference
 
@@ -320,6 +320,8 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
         cleaned = normalize_results(cleaned)
     cleaned = apply_station_inference(cleaned, config)
     cleaned = apply_master_names(cleaned, config)
+    if "reviewed_vote_cells_file" in config.paths:
+        cleaned = apply_reviewed_vote_cells(cleaned, config.path("reviewed_vote_cells_file"))
     cleaned = normalize_results(cleaned)
     cleaned = deduplicate_result_rows(cleaned)
     cleaned = apply_master_key_validation(cleaned, config)

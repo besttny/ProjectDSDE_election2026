@@ -29,6 +29,7 @@ data/raw/pdfs/**/*.pdf
 data/raw/pdfs/**/*.PDF
 !data/raw/pdfs/**/.gitkeep
 !data/raw/pdfs/README.md
+data/raw/crops/**
 
 # Parsed OCR intermediates are reproducible from OCR artifacts.
 data/processed/parsed/**
