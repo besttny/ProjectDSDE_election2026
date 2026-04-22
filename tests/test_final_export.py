@@ -1,10 +1,12 @@
 import pandas as pd
 
+from src.pipeline.config import ProjectConfig
 from src.pipeline.final_export import (
     CONSTITUENCY_COLUMNS,
     PARTYLIST_COLUMNS,
     build_constituency_votes,
     build_partylist_votes,
+    filter_master_matched_rows,
 )
 
 
@@ -69,3 +71,40 @@ def test_build_final_partylist_schema_headers_and_values():
     assert output.loc[0, "voting_type"] == "election_day"
     assert output.loc[0, "party_no"] == "5"
     assert output.loc[0, "party"] == "เพื่อไทย"
+
+
+def test_filter_master_matched_rows_removes_impossible_choice_numbers(tmp_path):
+    external = tmp_path / "data/external"
+    external.mkdir(parents=True)
+    (external / "master_candidates.csv").write_text(
+        "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases\n"
+        "ชัยภูมิ,2,518,1,นาย ก,พรรค ก,\n",
+        encoding="utf-8",
+    )
+    (external / "master_parties.csv").write_text(
+        "party_no,canonical_name,aliases\n"
+        "1,พรรคหนึ่ง,\n",
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        root=tmp_path,
+        data={
+            "paths": {
+                "master_candidates_file": "data/external/master_candidates.csv",
+                "master_parties_file": "data/external/master_parties.csv",
+            }
+        },
+    )
+    df = pd.DataFrame(
+        [
+            {"province": "ชัยภูมิ", "constituency_no": 2, "form_type": "5_18", "choice_no": 1},
+            {"province": "ชัยภูมิ", "constituency_no": 2, "form_type": "5_18", "choice_no": 9},
+            {"province": "ชัยภูมิ", "constituency_no": 2, "form_type": "5_18_partylist", "choice_no": 1},
+            {"province": "ชัยภูมิ", "constituency_no": 2, "form_type": "5_18_partylist", "choice_no": 99},
+        ]
+    )
+
+    filtered = filter_master_matched_rows(df, config)
+
+    assert filtered["choice_no"].tolist() == [1, 1]
+    assert filtered["form_type"].tolist() == ["5_18", "5_18_partylist"]

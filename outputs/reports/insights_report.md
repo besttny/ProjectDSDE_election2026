@@ -5,7 +5,7 @@
 - Parsed polling stations: 338
 - Forms present: 5_16, 5_16_partylist, 5_17, 5_17_partylist, 5_18, 5_18_partylist
 - Total choice votes: 7,696,914,030
-- Rows requiring review: 6,358
+- Rows requiring review: 6,405
 
 ## Top Choices
 - นายกวัสย์ หงษ์ไทย / เศรษฐกิจ: 3,013,992,812 votes
@@ -31,5 +31,3 @@
 - Rank stations by invalid/no-vote rates after summary fields are extracted.
 - Use validation failures as data-quality evidence, not hidden cleanup work.
 - Add 2023 data to calculate vote swing once external data is loaded.
-
-Generated figure: `/Users/pornmongkol/Documents/ProjectDSDE_election2026/outputs/figures/top_choices.png`

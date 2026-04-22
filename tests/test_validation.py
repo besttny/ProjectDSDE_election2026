@@ -72,3 +72,56 @@ def test_validate_dataframe_checks_candidate_master_scope_and_one_person_rule(tm
     assert report.loc["candidate_master_scoped_keys", "status"] == "fail"
     assert report.loc["candidate_master_one_person_one_constituency", "status"] == "fail"
     assert report.loc["candidate_master_candidate_no_scoped", "status"] == "pass"
+
+
+def test_validate_dataframe_reports_result_rows_not_matching_master_keys(tmp_path: Path):
+    candidate_master = tmp_path / "master_candidates.csv"
+    candidate_master.write_text(
+        "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases\n"
+        "ชัยภูมิ,2,518,1,นาย ก,พรรค ก,\n",
+        encoding="utf-8",
+    )
+    party_master = tmp_path / "master_parties.csv"
+    party_master.write_text(
+        "party_no,canonical_name,aliases\n"
+        "1,พรรคหนึ่ง,\n",
+        encoding="utf-8",
+    )
+    df = pd.DataFrame(
+        [
+            {
+                "province": "ชัยภูมิ",
+                "constituency_no": 2,
+                "form_type": "5_18",
+                "choice_no": 1,
+                "validation_status": "ok",
+            },
+            {
+                "province": "ชัยภูมิ",
+                "constituency_no": 2,
+                "form_type": "5_18",
+                "choice_no": 9,
+                "validation_status": "ok",
+            },
+            {
+                "province": "ชัยภูมิ",
+                "constituency_no": 2,
+                "form_type": "5_18_partylist",
+                "choice_no": 99,
+                "validation_status": "needs_review",
+            },
+        ]
+    )
+
+    report = validate_dataframe(
+        df,
+        manifest_entries=[],
+        expected_polling_stations=341,
+        candidate_master_path=candidate_master,
+        party_master_path=party_master,
+    ).set_index("check")
+
+    assert report.loc["result_candidate_master_matches", "status"] == "fail"
+    assert "1 are still marked ok" in report.loc["result_candidate_master_matches", "details"]
+    assert report.loc["result_party_master_matches", "status"] == "warn"
+    assert "0 are still marked ok" in report.loc["result_party_master_matches", "details"]

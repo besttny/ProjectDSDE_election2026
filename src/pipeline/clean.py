@@ -9,6 +9,10 @@ from src.pipeline.reviewed_rows import apply_reviewed_rows
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
 from src.pipeline.station_inference import apply_station_inference
 
+CONSTITUENCY_FORMS = {"5_16", "5_17", "5_18"}
+PARTYLIST_FORMS = {"5_16_partylist", "5_17_partylist", "5_18_partylist"}
+
+
 def load_parsed_results(parsed_dir: Path) -> pd.DataFrame:
     files = sorted(parsed_dir.glob("*.csv"))
     if not files:
@@ -120,6 +124,24 @@ def _party_master_map(path: Path) -> dict[str, str]:
     return mapping
 
 
+def _candidate_master_keys(path: Path) -> set[tuple[str, str, str]]:
+    return set(_candidate_master_map(path).keys())
+
+
+def _party_master_keys(path: Path) -> set[str]:
+    return set(_party_master_map(path).keys())
+
+
+def _candidate_result_key(row: pd.Series, config: ProjectConfig) -> tuple[str, str, str]:
+    province = _normalize_key_text(row.get("province", "")) or _normalize_key_text(config.province)
+    constituency_no = (
+        _normalize_key_number(row.get("constituency_no", ""))
+        or _normalize_key_number(config.constituency_no)
+    )
+    choice_no = _normalize_key_number(row.get("choice_no", ""))
+    return province, constituency_no, choice_no
+
+
 def apply_master_names(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
     if df.empty:
         return df
@@ -135,24 +157,45 @@ def apply_master_names(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
         choice_no = _normalize_key_number(row.get("choice_no", ""))
         if not choice_no:
             continue
-        if form_type in {"5_16", "5_17", "5_18"}:
-            province = _normalize_key_text(row.get("province", "")) or _normalize_key_text(config.province)
-            constituency_no = (
-                _normalize_key_number(row.get("constituency_no", ""))
-                or _normalize_key_number(config.constituency_no)
-            )
-            candidate = candidate_map.get((province, constituency_no, choice_no))
+        if form_type in CONSTITUENCY_FORMS:
+            candidate = candidate_map.get(_candidate_result_key(row, config))
             if candidate:
                 if candidate["choice_name"]:
                     filled.at[index, "choice_name"] = candidate["choice_name"]
                 if candidate["party_name"]:
                     filled.at[index, "party_name"] = candidate["party_name"]
-        elif form_type in {"5_16_partylist", "5_17_partylist", "5_18_partylist"}:
+        elif form_type in PARTYLIST_FORMS:
             party_name = party_map.get(choice_no)
             if party_name:
                 filled.at[index, "choice_name"] = ""
                 filled.at[index, "party_name"] = party_name
     return filled
+
+
+def apply_master_key_validation(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    candidate_keys = _candidate_master_keys(config.path("master_candidates_file"))
+    party_keys = _party_master_keys(config.path("master_parties_file"))
+    if not candidate_keys and not party_keys:
+        return df
+
+    validated = df.copy()
+    for index, row in validated.iterrows():
+        form_type = str(row.get("form_type", "")).strip()
+        choice_no = _normalize_key_number(row.get("choice_no", ""))
+        if not choice_no:
+            if form_type in CONSTITUENCY_FORMS | PARTYLIST_FORMS:
+                validated.at[index, "validation_status"] = "needs_review"
+            continue
+        if form_type in CONSTITUENCY_FORMS and candidate_keys:
+            if _candidate_result_key(row, config) not in candidate_keys:
+                validated.at[index, "validation_status"] = "needs_review"
+        elif form_type in PARTYLIST_FORMS and party_keys:
+            if choice_no not in party_keys:
+                validated.at[index, "validation_status"] = "needs_review"
+    return validated
 
 
 def _first_filled(series: pd.Series) -> object:
@@ -279,6 +322,7 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
     cleaned = apply_master_names(cleaned, config)
     cleaned = normalize_results(cleaned)
     cleaned = deduplicate_result_rows(cleaned)
+    cleaned = apply_master_key_validation(cleaned, config)
     cleaned = normalize_results(cleaned)
 
     results_path = config.output("election_results")

@@ -142,12 +142,128 @@ def _candidate_master_checks(candidate_master_path: Path | None) -> list[dict[st
     return checks
 
 
+def _candidate_master_key_set(candidate_master_path: Path | None) -> set[tuple[str, str, str]]:
+    if candidate_master_path is None or not candidate_master_path.exists():
+        return set()
+    frame = pd.read_csv(candidate_master_path).fillna("")
+    if not set(CANDIDATE_MASTER_SCOPE_COLUMNS).issubset(frame.columns):
+        return set()
+    return {
+        (
+            _normalize_text_key(row["province"]),
+            _normalize_number_key(row["constituency_no"]),
+            _normalize_number_key(row["candidate_no"]),
+        )
+        for _, row in frame.iterrows()
+        if _normalize_text_key(row["province"])
+        and _normalize_number_key(row["constituency_no"])
+        and _normalize_number_key(row["candidate_no"])
+    }
+
+
+def _party_master_key_set(party_master_path: Path | None) -> set[str]:
+    if party_master_path is None or not party_master_path.exists():
+        return set()
+    frame = pd.read_csv(party_master_path).fillna("")
+    if "party_no" not in frame.columns:
+        return set()
+    return {
+        _normalize_number_key(row["party_no"])
+        for _, row in frame.iterrows()
+        if _normalize_number_key(row["party_no"])
+    }
+
+
+def _result_master_match_checks(
+    df: pd.DataFrame,
+    *,
+    candidate_master_path: Path | None,
+    party_master_path: Path | None,
+) -> list[dict[str, str]]:
+    if df.empty:
+        return [
+            _row("result_candidate_master_matches", "warn", "major", "No rows to compare"),
+            _row("result_party_master_matches", "warn", "major", "No rows to compare"),
+        ]
+
+    candidate_keys = _candidate_master_key_set(candidate_master_path)
+    party_keys = _party_master_key_set(party_master_path)
+    report: list[dict[str, str]] = []
+
+    forms = df.get("form_type", pd.Series(dtype=str)).astype(str)
+    statuses = df.get("validation_status", pd.Series(dtype=str)).astype(str)
+
+    candidate_rows = df[forms.isin({"5_16", "5_17", "5_18"})]
+    if candidate_keys:
+        unmatched_indexes: list[int] = []
+        for index, row in candidate_rows.iterrows():
+            key = (
+                _normalize_text_key(row.get("province", "")),
+                _normalize_number_key(row.get("constituency_no", "")),
+                _normalize_number_key(row.get("choice_no", "")),
+            )
+            if "" in key or key not in candidate_keys:
+                unmatched_indexes.append(index)
+        ok_unmatched = int(statuses.loc[unmatched_indexes].eq("ok").sum()) if unmatched_indexes else 0
+        report.append(
+            _row(
+                "result_candidate_master_matches",
+                "fail" if ok_unmatched else ("warn" if unmatched_indexes else "pass"),
+                "major",
+                (
+                    f"{len(unmatched_indexes)} constituency result rows are not in candidate master; "
+                    f"{ok_unmatched} are still marked ok"
+                ),
+            )
+        )
+    else:
+        report.append(
+            _row(
+                "result_candidate_master_matches",
+                "warn",
+                "major",
+                "No candidate master keys available for result comparison",
+            )
+        )
+
+    party_rows = df[forms.isin({"5_16_partylist", "5_17_partylist", "5_18_partylist"})]
+    if party_keys:
+        unmatched_indexes = []
+        for index, row in party_rows.iterrows():
+            choice_no = _normalize_number_key(row.get("choice_no", ""))
+            if not choice_no or choice_no not in party_keys:
+                unmatched_indexes.append(index)
+        ok_unmatched = int(statuses.loc[unmatched_indexes].eq("ok").sum()) if unmatched_indexes else 0
+        report.append(
+            _row(
+                "result_party_master_matches",
+                "fail" if ok_unmatched else ("warn" if unmatched_indexes else "pass"),
+                "major",
+                (
+                    f"{len(unmatched_indexes)} party-list result rows are not in party master; "
+                    f"{ok_unmatched} are still marked ok"
+                ),
+            )
+        )
+    else:
+        report.append(
+            _row(
+                "result_party_master_matches",
+                "warn",
+                "major",
+                "No party master keys available for result comparison",
+            )
+        )
+    return report
+
+
 def validate_dataframe(
     df: pd.DataFrame,
     *,
     manifest_entries: list[ManifestEntry],
     expected_polling_stations: int,
     candidate_master_path: Path | None = None,
+    party_master_path: Path | None = None,
 ) -> pd.DataFrame:
     report: list[dict[str, str]] = []
 
@@ -183,10 +299,21 @@ def validate_dataframe(
         )
     )
     report.extend(_candidate_master_checks(candidate_master_path))
+    report.extend(
+        _result_master_match_checks(
+            df,
+            candidate_master_path=candidate_master_path,
+            party_master_path=party_master_path,
+        )
+    )
 
     for form in ELECTION_DAY_FORMS:
         form_df = df[df.get("form_type", pd.Series(dtype=str)).astype(str) == form]
-        stations = form_df["polling_station_no"].dropna().nunique() if not form_df.empty else 0
+        stations = (
+            form_df["polling_station_no"].dropna().nunique()
+            if not form_df.empty and "polling_station_no" in form_df.columns
+            else 0
+        )
         report.append(
             _row(
                 f"{form}_station_coverage",
@@ -310,6 +437,11 @@ def validate_results(config: ProjectConfig) -> tuple[Path, Path]:
         candidate_master_path=(
             config.path("master_candidates_file")
             if "master_candidates_file" in config.paths
+            else None
+        ),
+        party_master_path=(
+            config.path("master_parties_file")
+            if "master_parties_file" in config.paths
             else None
         ),
     )

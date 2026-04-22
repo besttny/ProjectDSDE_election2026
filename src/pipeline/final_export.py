@@ -49,6 +49,85 @@ FORM_MAP = {
 }
 
 
+def _normalize_key_text(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).replace("\ufeff", "").strip()
+
+
+def _normalize_key_number(value: object) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.notna(numeric) and float(numeric).is_integer():
+        return str(int(numeric))
+    return _normalize_key_text(value)
+
+
+def _candidate_master_keys(config: ProjectConfig) -> set[tuple[str, str, str]]:
+    if "master_candidates_file" not in config.paths:
+        return set()
+    path = config.path("master_candidates_file")
+    if not path.exists():
+        return set()
+    frame = pd.read_csv(path).fillna("")
+    required = {"province", "constituency_no", "candidate_no"}
+    if not required.issubset(frame.columns):
+        return set()
+    return {
+        (
+            _normalize_key_text(row["province"]),
+            _normalize_key_number(row["constituency_no"]),
+            _normalize_key_number(row["candidate_no"]),
+        )
+        for _, row in frame.iterrows()
+        if _normalize_key_text(row["province"])
+        and _normalize_key_number(row["constituency_no"])
+        and _normalize_key_number(row["candidate_no"])
+    }
+
+
+def _party_master_keys(config: ProjectConfig) -> set[str]:
+    if "master_parties_file" not in config.paths:
+        return set()
+    path = config.path("master_parties_file")
+    if not path.exists():
+        return set()
+    frame = pd.read_csv(path).fillna("")
+    if "party_no" not in frame.columns:
+        return set()
+    return {
+        _normalize_key_number(row["party_no"])
+        for _, row in frame.iterrows()
+        if _normalize_key_number(row["party_no"])
+    }
+
+
+def filter_master_matched_rows(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    candidate_keys = _candidate_master_keys(config)
+    party_keys = _party_master_keys(config)
+    if not candidate_keys and not party_keys:
+        return df
+
+    keep: list[bool] = []
+    for _, row in df.iterrows():
+        form_type = str(row.get("form_type", "")).strip()
+        choice_no = _normalize_key_number(row.get("choice_no", ""))
+        if form_type in {"5_16", "5_17", "5_18"} and candidate_keys:
+            key = (
+                _normalize_key_text(row.get("province", "")),
+                _normalize_key_number(row.get("constituency_no", "")),
+                choice_no,
+            )
+            keep.append("" not in key and key in candidate_keys)
+        elif form_type in {"5_16_partylist", "5_17_partylist", "5_18_partylist"} and party_keys:
+            keep.append(bool(choice_no and choice_no in party_keys))
+        else:
+            keep.append(True)
+    return df.loc[keep].copy()
+
+
 def _read_results(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame(columns=RESULT_COLUMNS)
@@ -130,6 +209,7 @@ def export_final_schema(config: ProjectConfig) -> tuple[Path, Path]:
     if not results_path.exists():
         clean_results(config)
     df = _read_results(results_path)
+    df = filter_master_matched_rows(df, config)
 
     constituency = build_constituency_votes(df)
     partylist = build_partylist_votes(df)
