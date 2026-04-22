@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.ocr.text_constraints import invalid_thai_text_mask
 from src.pipeline.clean import clean_results
 from src.pipeline.config import ProjectConfig, load_config
 from src.pipeline.manifest import ManifestEntry, load_manifest, write_manifest_status
@@ -304,6 +305,26 @@ def validate_dataframe(
             df,
             candidate_master_path=candidate_master_path,
             party_master_path=party_master_path,
+        )
+    )
+
+    invalid_text = invalid_thai_text_mask(df)
+    invalid_text_count = int(invalid_text.sum())
+    invalid_text_ok = int(
+        (
+            invalid_text
+            & df.get("validation_status", pd.Series(dtype=str)).astype(str).eq("ok")
+        ).sum()
+    )
+    report.append(
+        _row(
+            "thai_text_charset",
+            "fail" if invalid_text_ok else ("warn" if invalid_text_count else "pass"),
+            "major",
+            (
+                f"{invalid_text_count} rows contain non-Thai text in Thai fields; "
+                f"{invalid_text_ok} are still marked ok"
+            ),
         )
     )
 

@@ -11,6 +11,7 @@
 | candidate_master_candidate_no_scoped | pass | major | 0 candidate numbers are reused across constituencies; mapping uses province + constituency_no + candidate_no, not candidate_no alone |
 | result_candidate_master_matches | warn | major | 115 constituency result rows are not in candidate master; 0 are still marked ok |
 | result_party_master_matches | warn | major | 32 party-list result rows are not in party master; 0 are still marked ok |
+| thai_text_charset | warn | major | 45 rows contain non-Thai text in Thai fields; 0 are still marked ok |
 | 5_18_station_coverage | fail | critical | 329 / 341 polling stations parsed |
 | 5_18_partylist_station_coverage | fail | critical | 315 / 341 polling stations parsed |
 | non_negative_votes | pass | critical | 0 rows have negative votes |

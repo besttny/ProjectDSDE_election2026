@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.ocr.text_constraints import apply_thai_text_constraints
 from src.pipeline.config import ProjectConfig, load_config
 from src.pipeline.reviewed_rows import apply_reviewed_rows, apply_reviewed_vote_cells
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
@@ -325,6 +326,7 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
     cleaned = normalize_results(cleaned)
     cleaned = deduplicate_result_rows(cleaned)
     cleaned = apply_master_key_validation(cleaned, config)
+    cleaned = apply_thai_text_constraints(cleaned)
     cleaned = normalize_results(cleaned)
 
     results_path = config.output("election_results")

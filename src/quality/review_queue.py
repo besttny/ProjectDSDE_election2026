@@ -6,6 +6,7 @@ from typing import Iterable
 
 import pandas as pd
 
+from src.ocr.text_constraints import invalid_thai_text_mask
 from src.pipeline.clean import clean_results
 from src.pipeline.config import ProjectConfig, load_config
 from src.pipeline.schema import RESULT_COLUMNS
@@ -47,6 +48,7 @@ REASON_ACTIONS = {
     "choice_votes_exceed_valid_votes": "Check all vote rows in this station/form group.",
     "ballot_accounting_mismatch": "Verify total, invalid, and no-vote ballot fields from the summary box.",
     "master_data_unmatched": "Confirm spelling and add alias or correction in external master/correction files.",
+    "invalid_text_charset": "Replace OCR text noise with official Thai master data or a manual correction.",
 }
 
 
@@ -71,7 +73,12 @@ def _priority(reason: str) -> str:
         "ballot_accounting_mismatch",
     }:
         return "P0"
-    if reason in {"low_ocr_confidence", "parser_marked_needs_review", "master_data_unmatched"}:
+    if reason in {
+        "low_ocr_confidence",
+        "parser_marked_needs_review",
+        "master_data_unmatched",
+        "invalid_text_charset",
+    }:
         return "P1"
     return "P2"
 
@@ -189,6 +196,7 @@ def build_review_queue(config: ProjectConfig) -> pd.DataFrame:
     reasons.append(("choice_votes_exceed_valid_votes", _exceeded_valid_vote_indexes(working)))
     reasons.append(("ballot_accounting_mismatch", _ballot_accounting_mismatch_indexes(working)))
     reasons.append(("master_data_unmatched", _master_unmatched_indexes(config)))
+    reasons.append(("invalid_text_charset", working.index[invalid_thai_text_mask(working)].tolist()))
 
     rows: list[dict[str, object]] = []
     for reason, indexes in reasons:
