@@ -5,16 +5,30 @@ __pycache__/
 .ruff_cache/
 .cache/
 .DS_Store
+*.log
 
 .venv/
 venv/
 env/
 
-data/*.zip
+# Local scratch / Colab artifact bundles
+tmp/
+artifacts/
+*.zip
+
+# Local official-reference binaries. Keep README/source notes in Git.
 data/external/official_sources/*.pdf
-data/raw/images/*
+data/external/official_sources/*.PDF
+
+# Raw OCR inputs/outputs can be large and should be restored from Drive/artifacts.
+data/raw/images/**
 !data/raw/images/.gitkeep
-data/raw/ocr/*
+data/raw/ocr/**
 !data/raw/ocr/.gitkeep
 data/raw/pdfs/**/*.pdf
+data/raw/pdfs/**/*.PDF
 !data/raw/pdfs/**/.gitkeep
+!data/raw/pdfs/README.md
+
+# Parsed OCR intermediates are reproducible from OCR artifacts.
+data/processed/parsed/**
