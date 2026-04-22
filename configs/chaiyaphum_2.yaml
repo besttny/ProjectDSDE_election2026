@@ -73,5 +73,6 @@ outputs:
   insights_report: outputs/reports/insights_report.md
   p0_fallback_targets: data/processed/p0_fallback_targets.csv
   p0_digit_crops_manifest: data/processed/p0_digit_crops_manifest.csv
+  digit_crop_ocr_suggestions: data/processed/digit_crop_ocr_suggestions.csv
   invalid_text_review: data/processed/invalid_text_charset_review.csv
   invalid_text_missing_vote_targets: data/processed/invalid_text_missing_vote_targets.csv

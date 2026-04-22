@@ -13,6 +13,7 @@ from PIL import Image, ImageOps
 
 from src.ocr.digits import extract_digit_cell_value
 from src.pipeline.config import ProjectConfig, load_config
+from src.quality.master_keys import validate_choice_key
 from src.quality.review_queue import write_review_queue
 
 MANIFEST_COLUMNS = [
@@ -29,6 +30,7 @@ MANIFEST_COLUMNS = [
     "crop_variant",
     "crop_path",
     "crop_box",
+    "choice_key_status",
     "status",
     "notes",
 ]
@@ -77,6 +79,9 @@ def _read_row_index_filter(path: Path | None) -> set[int] | None:
         raise ValueError("Row-index filter CSV must include a row_index column")
     values = pd.to_numeric(frame["row_index"], errors="coerce").dropna().astype(int)
     return set(values.tolist())
+
+
+read_row_index_filter = _read_row_index_filter
 
 
 def _candidate_paths(base_dir: Path, source_pdf: object, page_no: int) -> list[Path]:
@@ -290,7 +295,7 @@ def vote_cell_crop_box(
     payload_crop_box = (
         table_left + table_width * 0.60,
         center_y - crop_height / 2,
-        table_right - table_width * 0.015,
+        table_left + table_width * 0.76,
         center_y + crop_height / 2,
     )
     image_crop_box = _scale_payload_box_to_image(
@@ -413,6 +418,30 @@ def build_digit_crop_manifest(
             "image_path": str(image_path or ""),
             "raw_ocr_path": str(raw_path or ""),
         }
+        choice_key_status = validate_choice_key(
+            config,
+            form_type=target.get("form_type", ""),
+            choice_no=choice_no,
+            province=target.get("province", ""),
+            constituency_no=target.get("constituency_no", ""),
+        )
+        base_record["choice_key_status"] = choice_key_status
+        if choice_key_status == "invalid":
+            rows.append(
+                {
+                    **base_record,
+                    "crop_variant": "",
+                    "crop_path": "",
+                    "crop_box": "",
+                    "status": "invalid_choice_no",
+                    "notes": (
+                        "Choice number is not present in the official master for this "
+                        "form/province/constituency. Review parser row alignment before "
+                        "digit OCR."
+                    ),
+                }
+            )
+            continue
         if image_path is None:
             rows.append({**base_record, "crop_variant": "", "crop_path": "", "crop_box": "", "status": "missing_image", "notes": "Render source PDF page before preparing digit crops"})
             continue

@@ -156,3 +156,65 @@ def test_build_digit_crop_manifest_can_filter_row_indexes(tmp_path: Path):
     manifest = build_digit_crop_manifest(config, row_indexes={8})
 
     assert manifest["row_index"].drop_duplicates().tolist() == [8]
+
+
+def test_build_digit_crop_manifest_skips_invalid_master_choice(tmp_path: Path):
+    config = ProjectConfig(
+        root=tmp_path,
+        data={
+            "project": {"province": "ชัยภูมิ", "constituency_no": 2},
+            "paths": {
+                "raw_image_dir": "data/raw/images",
+                "raw_ocr_dir": "data/raw/ocr",
+                "processed_dir": "data/processed",
+                "master_candidates_file": "data/external/master_candidates.csv",
+                "master_parties_file": "data/external/master_parties.csv",
+            },
+            "outputs": {
+                "review_queue": "data/processed/review_queue.csv",
+                "p0_digit_crops_manifest": "data/processed/p0_digit_crops_manifest.csv",
+            },
+        },
+    )
+    image_dir = tmp_path / "data/raw/images/5_18/sample"
+    raw_dir = tmp_path / "data/raw/ocr/5_18/sample"
+    processed_dir = tmp_path / "data/processed"
+    external_dir = tmp_path / "data/external"
+    image_dir.mkdir(parents=True)
+    raw_dir.mkdir(parents=True)
+    processed_dir.mkdir(parents=True)
+    external_dir.mkdir(parents=True)
+
+    Image.new("RGB", (1000, 1400), "white").save(image_dir / "sample_page_0001.png")
+    (raw_dir / "sample_page_0001.json").write_text(
+        json.dumps(_payload(), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (external_dir / "master_candidates.csv").write_text(
+        "province,constituency_no,candidate_no,canonical_name,party_name\n"
+        "ชัยภูมิ,2,2,นาย ก,พรรค ก\n",
+        encoding="utf-8",
+    )
+    (external_dir / "master_parties.csv").write_text(
+        "party_no,canonical_name\n1,พรรคหนึ่ง\n",
+        encoding="utf-8",
+    )
+    pd.DataFrame(
+        [
+            {
+                "priority": "P0",
+                "reason": "missing_votes",
+                "row_index": 7,
+                "source_pdf": "/content/data/raw/pdfs/sample.pdf",
+                "source_page": 1,
+                "form_type": "5_18",
+                "polling_station_no": 1,
+                "choice_no": 7,
+            }
+        ]
+    ).to_csv(processed_dir / "review_queue.csv", index=False, encoding="utf-8-sig")
+
+    manifest = build_digit_crop_manifest(config)
+
+    assert manifest["status"].tolist() == ["invalid_choice_no"]
+    assert manifest.loc[0, "choice_key_status"] == "invalid"

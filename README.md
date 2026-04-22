@@ -166,12 +166,37 @@ Recommended process:
 2. Run the review queue and fix every `P0` row first.
 3. Use `data/processed/master_match_report.csv` to add repeatable aliases or
    manual corrections instead of silently editing final outputs.
-4. For OCR rows that cannot be recovered reliably, enter the verified row in
+4. For invalid Thai text noise, build the focused review files:
+
+   ```bash
+   python -m src.quality.invalid_text_review --config configs/chaiyaphum_2.yaml
+   ```
+
+   If the row is classified as `invalid_choice_number`, fix parser row
+   alignment or review the source page; do not add that number to the official
+   master. Constituency candidates are validated by
+   `province + constituency_no + candidate_no`, while party-list rows use
+   `party_no`.
+5. If `data/processed/invalid_text_missing_vote_targets.csv` has rows, those
+   rows have valid master keys but missing vote values. Create targeted
+   digit-cell crops and optional local Tesseract suggestions:
+
+   ```bash
+   python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr \
+     --prepare-digit-crops \
+     --prepare-digit-suggestions \
+     --digit-crop-row-indexes-csv data/processed/invalid_text_missing_vote_targets.csv
+   ```
+
+   Review `data/processed/digit_crop_ocr_suggestions.csv` before copying any
+   value into `data/external/reviewed_vote_cells.csv`. This file applies a
+   single verified vote cell without replacing the whole source page.
+6. For OCR rows that cannot be recovered reliably, enter the verified row in
    `data/external/reviewed_rows.csv`; this replaces OCR rows for the same
    source PDF page and form.
-5. Manually review a sample of source PDF pages and enter the verified values
+7. Manually review a sample of source PDF pages and enter the verified values
    into `data/external/ground_truth_sample.csv`.
-6. Run the accuracy evaluator. Claim 99% only when
+8. Run the accuracy evaluator. Claim 99% only when
    `overall_field_accuracy` and `row_exact_accuracy` pass the configured
    `quality.target_accuracy` threshold.
 
@@ -195,6 +220,7 @@ The dashboard loads `data/processed/dashboard_dataset.parquet` when available an
 - `data/processed/constituency_votes.csv`
 - `data/processed/partylist_votes.csv`
 - `data/processed/review_queue.csv`
+- `data/processed/digit_crop_ocr_suggestions.csv`
 - `data/processed/master_match_report.csv`
 - `data/processed/accuracy_report.csv`
 - `data/processed/accuracy_details.csv`

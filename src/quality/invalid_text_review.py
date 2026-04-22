@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.pipeline.config import ProjectConfig, load_config
+from src.quality.master_keys import normalize_number_key, validate_choice_key
 from src.quality.review_queue import write_review_queue
 
 REVIEW_COLUMNS = [
@@ -28,34 +29,11 @@ REVIEW_COLUMNS = [
 
 
 def _normalize_number(value: object) -> str:
-    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
-    if pd.notna(numeric) and float(numeric).is_integer():
-        return str(int(numeric))
-    return "" if pd.isna(value) else str(value).strip()
+    return normalize_number_key(value)
 
 
 def _read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path) if path.exists() else pd.DataFrame()
-
-
-def _party_keys(config: ProjectConfig) -> set[str]:
-    path = config.path("master_parties_file")
-    frame = _read_csv(path).fillna("")
-    if "party_no" not in frame.columns:
-        return set()
-    return {_normalize_number(value) for value in frame["party_no"] if _normalize_number(value)}
-
-
-def _candidate_keys(config: ProjectConfig) -> set[str]:
-    path = config.path("master_candidates_file")
-    frame = _read_csv(path).fillna("")
-    if "candidate_no" not in frame.columns:
-        return set()
-    return {
-        _normalize_number(value)
-        for value in frame["candidate_no"]
-        if _normalize_number(value)
-    }
 
 
 def _is_missing(value: object) -> bool:
@@ -74,26 +52,30 @@ def build_invalid_text_review(config: ProjectConfig) -> pd.DataFrame:
     if rows.empty:
         return pd.DataFrame(columns=REVIEW_COLUMNS)
 
-    candidate_keys = _candidate_keys(config)
-    party_keys = _party_keys(config)
     records: list[dict[str, object]] = []
     for _, row in rows.iterrows():
         form_type = str(row.get("form_type", "")).strip()
         choice_no = _normalize_number(row.get("choice_no", ""))
-        is_partylist = "partylist" in form_type
-        choice_in_master = choice_no in (party_keys if is_partylist else candidate_keys)
+        choice_validation = validate_choice_key(
+            config,
+            form_type=form_type,
+            choice_no=choice_no,
+            province=row.get("province", ""),
+            constituency_no=row.get("constituency_no", ""),
+        )
+        choice_in_master = choice_validation == "valid"
         has_missing_votes = _is_missing(row.get("votes", ""))
-        if has_missing_votes:
-            classification = "needs_digit_fallback"
-            recommended_action = (
-                "Create a vote-cell crop or use Google fallback, then record the "
-                "correct vote in data/external/reviewed_vote_cells.csv."
-            )
-        elif not choice_in_master:
+        if choice_validation == "invalid":
             classification = "invalid_choice_number"
             recommended_action = (
                 "Do not add this choice number to master automatically. Verify the "
                 "source row because OCR likely merged table text or misread row number."
+            )
+        elif has_missing_votes:
+            classification = "needs_digit_fallback"
+            recommended_action = (
+                "Create a vote-cell crop or use Google fallback, then record the "
+                "correct vote in data/external/reviewed_vote_cells.csv."
             )
         else:
             classification = "master_can_fill_name"
@@ -137,7 +119,8 @@ def write_invalid_text_review(config: ProjectConfig) -> tuple[Path, Path]:
         else config.path("processed_dir") / "invalid_text_missing_vote_targets.csv"
     )
     review.to_csv(review_path, index=False, encoding="utf-8-sig")
-    review[review["has_missing_votes"].astype(bool)].to_csv(
+    needs_digit_fallback = review["classification"].astype(str).eq("needs_digit_fallback")
+    review[needs_digit_fallback].to_csv(
         missing_vote_path,
         index=False,
         encoding="utf-8-sig",

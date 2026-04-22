@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from src.analysis.insights import build_insights
-from src.ocr.digit_crops import write_digit_crop_manifest
+from src.ocr.digit_crops import read_row_index_filter, write_digit_crop_manifest
+from src.ocr.digit_fallback import write_digit_crop_suggestions
 from src.ocr.extract import run_extraction, select_manifest_entries
 from src.pipeline.clean import clean_results
 from src.pipeline.config import load_config
@@ -59,10 +61,21 @@ def main() -> None:
         help="Create digit-only crop images for P0 missing vote rows.",
     )
     parser.add_argument(
+        "--prepare-digit-suggestions",
+        action="store_true",
+        help="Run optional Tesseract digit-only OCR over prepared crop images.",
+    )
+    parser.add_argument(
         "--max-digit-crop-targets",
         type=int,
         default=None,
         help="Limit P0 digit crop targets when --prepare-digit-crops is used.",
+    )
+    parser.add_argument(
+        "--digit-crop-row-indexes-csv",
+        type=Path,
+        default=None,
+        help="Optional CSV containing row_index values to target for digit crop/fallback.",
     )
     args = parser.parse_args()
 
@@ -109,11 +122,22 @@ def main() -> None:
     invalid_text_review_path, invalid_text_missing_vote_path = write_invalid_text_review(config)
     p0_fallback_targets_path = write_p0_fallback_targets(config)
     digit_crops_path = None
+    digit_crop_row_indexes = read_row_index_filter(args.digit_crop_row_indexes_csv)
     if args.prepare_digit_crops:
         digit_crops_path = write_digit_crop_manifest(
             config,
             max_targets=args.max_digit_crop_targets,
+            row_indexes=digit_crop_row_indexes,
         )
+    digit_suggestions_path = None
+    if args.prepare_digit_suggestions:
+        if digit_crops_path is None:
+            digit_crops_path = write_digit_crop_manifest(
+                config,
+                max_targets=args.max_digit_crop_targets,
+                row_indexes=digit_crop_row_indexes,
+            )
+        digit_suggestions_path = write_digit_crop_suggestions(config)
     accuracy_paths = write_accuracy_outputs(config)
     insights_path = build_insights(config)
 
@@ -133,6 +157,8 @@ def main() -> None:
     print(f"P0 fallback targets: {p0_fallback_targets_path}")
     if digit_crops_path is not None:
         print(f"P0 digit crop manifest: {digit_crops_path}")
+    if digit_suggestions_path is not None:
+        print(f"Digit crop OCR suggestions: {digit_suggestions_path}")
     print(f"Accuracy report: {accuracy_paths[0]}, {accuracy_paths[1]}, {accuracy_paths[2]}")
     print(f"Insights report: {insights_path}")
 
