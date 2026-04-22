@@ -38,3 +38,4 @@ data/processed/parsed/**
 data/processed/*.csv
 data/processed/*.parquet
 outputs/reports/*.md
+outputs/figures/*
