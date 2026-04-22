@@ -7,6 +7,16 @@ import pandas as pd
 from src.pipeline.config import ProjectConfig, load_config
 from src.pipeline.reviewed_rows import apply_reviewed_rows
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
+from src.pipeline.station_inference import apply_station_inference
+
+FORM_CODE_MAP = {
+    "5_16": "516",
+    "5_17": "517",
+    "5_18": "518",
+    "5_16_partylist": "516_bch",
+    "5_17_partylist": "517_bch",
+    "5_18_partylist": "518_bch",
+}
 
 
 def load_parsed_results(parsed_dir: Path) -> pd.DataFrame:
@@ -71,6 +81,79 @@ def apply_manual_corrections(df: pd.DataFrame, correction_file: Path) -> pd.Data
     return corrected
 
 
+def _normalize_key_number(value: object) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.notna(numeric) and float(numeric).is_integer():
+        return str(int(numeric))
+    return "" if pd.isna(value) else str(value).strip()
+
+
+def _candidate_master_map(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+    if not path.exists():
+        return {}
+    frame = pd.read_csv(path).fillna("")
+    required = {"form_type", "candidate_no", "canonical_name", "party_name"}
+    if not required.issubset(frame.columns):
+        return {}
+    mapping: dict[tuple[str, str], dict[str, str]] = {}
+    for _, row in frame.iterrows():
+        form_code = str(row["form_type"]).strip()
+        choice_no = _normalize_key_number(row["candidate_no"])
+        if not form_code or not choice_no:
+            continue
+        mapping[(form_code, choice_no)] = {
+            "choice_name": str(row["canonical_name"]).strip(),
+            "party_name": str(row["party_name"]).strip(),
+        }
+    return mapping
+
+
+def _party_master_map(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    frame = pd.read_csv(path).fillna("")
+    if not {"party_no", "canonical_name"}.issubset(frame.columns):
+        return {}
+    mapping: dict[str, str] = {}
+    for _, row in frame.iterrows():
+        party_no = _normalize_key_number(row["party_no"])
+        party_name = str(row["canonical_name"]).strip()
+        if party_no and party_name:
+            mapping[party_no] = party_name
+    return mapping
+
+
+def apply_master_names(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    candidate_map = _candidate_master_map(config.path("master_candidates_file"))
+    party_map = _party_master_map(config.path("master_parties_file"))
+    if not candidate_map and not party_map:
+        return df
+
+    filled = df.copy()
+    for index, row in filled.iterrows():
+        form_type = str(row.get("form_type", "")).strip()
+        choice_no = _normalize_key_number(row.get("choice_no", ""))
+        if not choice_no:
+            continue
+        form_code = FORM_CODE_MAP.get(form_type, form_type)
+        if form_type in {"5_16", "5_17", "5_18"}:
+            candidate = candidate_map.get((form_code, choice_no))
+            if candidate:
+                if candidate["choice_name"]:
+                    filled.at[index, "choice_name"] = candidate["choice_name"]
+                if candidate["party_name"]:
+                    filled.at[index, "party_name"] = candidate["party_name"]
+        elif form_type in {"5_16_partylist", "5_17_partylist", "5_18_partylist"}:
+            party_name = party_map.get(choice_no)
+            if party_name:
+                filled.at[index, "choice_name"] = ""
+                filled.at[index, "party_name"] = party_name
+    return filled
+
+
 def build_polling_station_summary(df: pd.DataFrame) -> pd.DataFrame:
     columns = [
         "province",
@@ -131,6 +214,9 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
     if "reviewed_rows_file" in config.paths:
         cleaned = apply_reviewed_rows(cleaned, config.path("reviewed_rows_file"))
         cleaned = normalize_results(cleaned)
+    cleaned = apply_station_inference(cleaned, config)
+    cleaned = apply_master_names(cleaned, config)
+    cleaned = normalize_results(cleaned)
 
     results_path = config.output("election_results")
     cleaned.to_csv(results_path, index=False, encoding="utf-8-sig")

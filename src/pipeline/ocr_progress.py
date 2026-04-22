@@ -13,6 +13,11 @@ try:
 except ImportError:  # pragma: no cover - PyMuPDF is installed in the project env
     fitz = None
 
+try:
+    from pypdf import PdfReader
+except ImportError:  # pragma: no cover - optional local reporting fallback
+    PdfReader = None
+
 
 PROGRESS_COLUMNS = [
     "manifest_index",
@@ -29,10 +34,14 @@ PROGRESS_COLUMNS = [
 
 
 def _pdf_page_count(path: Path) -> int | None:
-    if not path.exists() or fitz is None:
+    if not path.exists():
         return None
-    with fitz.open(path) as document:
-        return document.page_count
+    if fitz is not None:
+        with fitz.open(path) as document:
+            return document.page_count
+    if PdfReader is not None:
+        return len(PdfReader(str(path)).pages)
+    return None
 
 
 def _raw_ocr_dir(config: ProjectConfig, entry: ManifestEntry) -> Path:

@@ -70,3 +70,4 @@ outputs:
   accuracy_report_md: outputs/reports/accuracy_report.md
   master_match_report: data/processed/master_match_report.csv
   insights_report: outputs/reports/insights_report.md
+  p0_fallback_targets: data/processed/p0_fallback_targets.csv

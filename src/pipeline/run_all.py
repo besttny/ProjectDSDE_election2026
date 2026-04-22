@@ -13,6 +13,7 @@ from src.pipeline.ocr_progress import write_ocr_progress
 from src.pipeline.validate import validate_results
 from src.quality.evaluate_accuracy import write_accuracy_outputs
 from src.quality.master_match import write_master_match_report
+from src.quality.p0_fallback_targets import write_p0_fallback_targets
 from src.quality.review_queue import write_review_queue
 
 
@@ -92,6 +93,7 @@ def main() -> None:
     progress_path = write_ocr_progress(config)
     master_match_path = write_master_match_report(config)
     review_queue_path = write_review_queue(config)
+    p0_fallback_targets_path = write_p0_fallback_targets(config)
     accuracy_paths = write_accuracy_outputs(config)
     insights_path = build_insights(config)
 
@@ -104,6 +106,7 @@ def main() -> None:
     print(f"OCR progress: {progress_path}")
     print(f"Master match report: {master_match_path}")
     print(f"Review queue: {review_queue_path}")
+    print(f"P0 fallback targets: {p0_fallback_targets_path}")
     print(f"Accuracy report: {accuracy_paths[0]}, {accuracy_paths[1]}, {accuracy_paths[2]}")
     print(f"Insights report: {insights_path}")
 
