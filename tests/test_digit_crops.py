@@ -4,7 +4,11 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src.ocr.digit_crops import build_digit_crop_manifest, vote_cell_crop_box
+from src.ocr.digit_crops import (
+    build_digit_crop_manifest,
+    template_vote_cell_crop_box,
+    vote_cell_crop_box,
+)
 from src.pipeline.config import ProjectConfig
 
 
@@ -75,6 +79,60 @@ def test_vote_cell_crop_box_rejects_tiny_edge_crop():
     box = vote_cell_crop_box(payload, choice_no=2, image_width=1000, image_height=1400)
 
     assert box is None
+
+
+def test_template_vote_cell_crop_box_uses_fixed_5_18_row_slot():
+    payload = {"page_width": 2480, "page_height": 3509, "zones": []}
+
+    row_1 = template_vote_cell_crop_box(
+        payload,
+        row_slot=1,
+        image_width=2480,
+        image_height=3509,
+    )
+    row_8 = template_vote_cell_crop_box(
+        payload,
+        row_slot=8,
+        image_width=2480,
+        image_height=3509,
+    )
+
+    assert row_1 is not None
+    assert row_8 is not None
+    assert 1400 < row_1[0] < 1500
+    assert 1600 < row_1[2] < 1680
+    assert row_8[1] > row_1[1] + 500
+
+
+def test_vote_cell_crop_box_falls_back_to_template_slot_when_anchor_missing():
+    payload = {"page_width": 2480, "page_height": 3509, "zones": [], "lines": []}
+
+    box = vote_cell_crop_box(
+        payload,
+        choice_no=1,
+        image_width=2480,
+        image_height=3509,
+        template_slot=1,
+    )
+
+    assert box is not None
+
+
+def test_vote_cell_crop_box_can_prefer_template_over_noisy_anchor():
+    payload = _payload()
+
+    box = vote_cell_crop_box(
+        payload,
+        choice_no=2,
+        image_width=1000,
+        image_height=1400,
+        template_slot=2,
+        prefer_template=True,
+    )
+
+    assert box is not None
+    assert box[0] > 560
+    assert box[2] < 700
 
 
 def test_build_digit_crop_manifest_creates_three_preprocessed_variants(tmp_path: Path):

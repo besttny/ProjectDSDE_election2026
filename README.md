@@ -163,10 +163,14 @@ Recommended process:
 
 1. Fill `data/external/master_parties.csv`, `master_candidates.csv`, and
    `master_polling_stations.csv` with official names and aliases.
-2. Run the review queue and fix every `P0` row first.
-3. Use `data/processed/master_match_report.csv` to add repeatable aliases or
+2. Rebuild with `python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr`.
+   The cleaning step scaffolds election-day `5_18` rows from the candidate
+   master and `5_18_partylist` rows from the party master, so OCR is used for
+   vote numbers rather than candidate/party identity.
+3. Run the review queue and fix every `P0` row first.
+4. Use `data/processed/master_match_report.csv` to add repeatable aliases or
    manual corrections instead of silently editing final outputs.
-4. For invalid Thai text noise, build the focused review files:
+5. For invalid Thai text noise, build the focused review files:
 
    ```bash
    python -m src.quality.invalid_text_review --config configs/chaiyaphum_2.yaml
@@ -177,26 +181,29 @@ Recommended process:
    master. Constituency candidates are validated by
    `province + constituency_no + candidate_no`, while party-list rows use
    `party_no`.
-5. If `data/processed/invalid_text_missing_vote_targets.csv` has rows, those
-   rows have valid master keys but missing vote values. Create targeted
-   digit-cell crops and optional local Tesseract suggestions:
+6. For missing vote values, create digit-cell crops and optional suggestions.
+   Use `invalid_text_missing_vote_targets.csv` only for charset-triggered rows;
+   for the normal P0 workflow, omit `--digit-crop-row-indexes-csv` or use a
+   CSV containing selected `review_queue.row_index` values:
 
    ```bash
    python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr \
      --prepare-digit-crops \
      --prepare-digit-suggestions \
-     --digit-crop-row-indexes-csv data/processed/invalid_text_missing_vote_targets.csv
+     --max-digit-crop-targets 50
    ```
 
    Review `data/processed/digit_crop_ocr_suggestions.csv` before copying any
-   value into `data/external/reviewed_vote_cells.csv`. This file applies a
-   single verified vote cell without replacing the whole source page.
-6. For OCR rows that cannot be recovered reliably, enter the verified row in
+   value into `data/external/reviewed_vote_cells.csv`. Suggestions combine
+   template cell crops, raw PaddleOCR JSON vote-cell text, and optional local
+   Tesseract; cells that remain noisy should go to Google Vision or manual
+   review.
+7. For OCR rows that cannot be recovered reliably, enter the verified row in
    `data/external/reviewed_rows.csv`; this replaces OCR rows for the same
    source PDF page and form.
-7. Manually review a sample of source PDF pages and enter the verified values
+8. Manually review a sample of source PDF pages and enter the verified values
    into `data/external/ground_truth_sample.csv`.
-8. Run the accuracy evaluator. Claim 99% only when
+9. Run the accuracy evaluator. Claim 99% only when
    `overall_field_accuracy` and `row_exact_accuracy` pass the configured
    `quality.target_accuracy` threshold.
 

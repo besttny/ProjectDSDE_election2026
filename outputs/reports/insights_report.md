@@ -1,11 +1,11 @@
 # Insights Report
 
 ## Coverage
-- Parsed rows: 8,916
-- Parsed polling stations: 338
+- Parsed rows: 20,570
+- Parsed polling stations: 339
 - Forms present: 5_16, 5_16_partylist, 5_17, 5_17_partylist, 5_18, 5_18_partylist
-- Total choice votes: 7,696,914,030
-- Rows requiring review: 6,405
+- Total choice votes: 7,696,898,891
+- Rows requiring review: 17,613
 
 ## Top Choices
 - นายกวัสย์ หงษ์ไทย / เศรษฐกิจ: 3,013,992,812 votes
@@ -17,7 +17,7 @@
 ## Highest Station/Form Vote Totals
 - 5_18_partylist station 291.0: 4,612,996,475 votes
 - 5_18 station 198.0: 3,010,225,051 votes
-- 5_18_partylist station 134.0: 60,024,495 votes
+- 5_18_partylist station 134.0: 60,024,494 votes
 - 5_18_partylist station 289.0: 4,230,923 votes
 - 5_18 station 206.0: 3,002,231 votes
 - 5_18_partylist station 185.0: 2,750,105 votes

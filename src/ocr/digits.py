@@ -59,3 +59,25 @@ def extract_digit_cell_value(text: object, *, max_digits: int = 6) -> int | None
         return None
     return int(compact)
 
+
+def extract_leading_digit_cell_value(text: object, *, max_digits: int = 4) -> int | None:
+    """Extract the leading vote number from OCR text that may include Thai words.
+
+    Some PaddleOCR vote-cell lines look like ``108Mน01`` or ``54.ห`` because the
+    printed Thai spelling in parentheses is merged into the same detection box.
+    The useful value is the leading digit run, while later digits usually belong
+    to noisy Thai text or other cells.
+    """
+
+    normalized = normalize_thai_digits(text)
+    if not normalized:
+        return None
+    match = re.match(r"^[\s.,:;·•'\"`_~\-–—/\\()\[\]{}]*(\d[\d\s.,:;·•'\"`_~]*)", normalized)
+    if not match:
+        return None
+    compact = re.sub(r"\D+", "", match.group(1))
+    if not compact or len(compact) > max_digits:
+        return None
+    if len(compact) > 1 and compact.startswith("0"):
+        return None
+    return int(compact)

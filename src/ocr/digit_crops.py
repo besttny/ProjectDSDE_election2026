@@ -281,10 +281,29 @@ def vote_cell_crop_box(
     choice_no: int,
     image_width: int,
     image_height: int,
+    template_slot: int | None = None,
+    prefer_template: bool = False,
 ) -> tuple[int, int, int, int] | None:
+    if prefer_template and template_slot is not None:
+        template_box = template_vote_cell_crop_box(
+            payload,
+            row_slot=template_slot,
+            image_width=image_width,
+            image_height=image_height,
+        )
+        if template_box is not None:
+            return template_box
+
     anchor = _anchor_for_choice(payload, choice_no=choice_no)
     if anchor is None:
-        return None
+        if template_slot is None:
+            return None
+        return template_vote_cell_crop_box(
+            payload,
+            row_slot=template_slot,
+            image_width=image_width,
+            image_height=image_height,
+        )
     table_left, _, table_right, _ = _table_box(payload)
     table_width = max(table_right - table_left, 1.0)
     _, y1, _, y2 = anchor
@@ -296,6 +315,52 @@ def vote_cell_crop_box(
         table_left + table_width * 0.60,
         center_y - crop_height / 2,
         table_left + table_width * 0.76,
+        center_y + crop_height / 2,
+    )
+    image_crop_box = _scale_payload_box_to_image(
+        payload_crop_box,
+        payload,
+        image_width=image_width,
+        image_height=image_height,
+    )
+    crop_box = _clamp_box(
+        image_crop_box,
+        width=image_width,
+        height=image_height,
+    )
+    if not _crop_box_is_usable(
+        crop_box,
+        image_width=image_width,
+        image_height=image_height,
+    ):
+        return None
+    return crop_box
+
+
+def template_vote_cell_crop_box(
+    payload: dict[str, Any],
+    *,
+    row_slot: int,
+    image_width: int,
+    image_height: int,
+) -> tuple[int, int, int, int] | None:
+    """Fallback crop for fixed-layout 5/18 constituency candidate rows.
+
+    Candidate number 7 is not present in Chaiyaphum constituency 2, but the
+    printed table still keeps its vertical slot. Therefore the candidate number
+    itself is the safest row slot for this form.
+    """
+
+    if row_slot <= 0 or row_slot > 12:
+        return None
+    page_width = float(payload.get("page_width") or image_width)
+    page_height = float(payload.get("page_height") or image_height)
+    center_y = page_height * 0.6215 + (row_slot - 1) * page_height * 0.0246
+    crop_height = max(page_height * 0.023, 64.0)
+    payload_crop_box = (
+        page_width * 0.585,
+        center_y - crop_height / 2,
+        page_width * 0.665,
         center_y + crop_height / 2,
     )
     image_crop_box = _scale_payload_box_to_image(
@@ -451,11 +516,16 @@ def build_digit_crop_manifest(
         with raw_path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
         with Image.open(image_path) as image:
+            template_slot = (
+                choice_no if str(target.get("form_type", "")).strip() == "5_18" else None
+            )
             crop_box = vote_cell_crop_box(
                 payload,
                 choice_no=choice_no,
                 image_width=image.width,
                 image_height=image.height,
+                template_slot=template_slot,
+                prefer_template=template_slot is not None,
             )
         if crop_box is None:
             rows.append({**base_record, "crop_variant": "", "crop_path": "", "crop_box": "", "status": "missing_or_invalid_row_anchor", "notes": "Could not locate a usable choice row anchor in the table zone"})

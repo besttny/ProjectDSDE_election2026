@@ -10,7 +10,7 @@ from typing import Iterable
 import pandas as pd
 
 from src.ocr.digit_crops import write_digit_crop_manifest
-from src.ocr.digits import extract_digit_cell_value
+from src.ocr.digits import extract_digit_cell_value, extract_leading_digit_cell_value
 from src.pipeline.config import ProjectConfig, load_config
 from src.quality.master_keys import validate_choice_key
 
@@ -78,6 +78,144 @@ def _choice_status(config: ProjectConfig, rows: pd.DataFrame) -> str:
         form_type=_first_value(rows, "form_type"),
         choice_no=_first_value(rows, "choice_no"),
     )
+
+
+def _parse_crop_box(value: object) -> tuple[float, float, float, float] | None:
+    if pd.isna(value):
+        return None
+    parts = [part.strip() for part in str(value).split(",")]
+    if len(parts) != 4:
+        return None
+    try:
+        left, top, right, bottom = (float(part) for part in parts)
+    except ValueError:
+        return None
+    if right <= left or bottom <= top:
+        return None
+    return left, top, right, bottom
+
+
+def _bbox(line: dict[str, object]) -> tuple[float, float, float, float] | None:
+    points = line.get("bbox") or []
+    if not points:
+        return None
+    xs = [float(point[0]) for point in points]
+    ys = [float(point[1]) for point in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _scaled_bbox(
+    box: tuple[float, float, float, float],
+    payload: dict[str, object],
+    *,
+    image_width: float,
+    image_height: float,
+) -> tuple[float, float, float, float]:
+    page_width = float(payload.get("page_width") or image_width)
+    page_height = float(payload.get("page_height") or image_height)
+    if page_width <= 0 or page_height <= 0:
+        return box
+    x_scale = image_width / page_width
+    y_scale = image_height / page_height
+    left, top, right, bottom = box
+    return left * x_scale, top * y_scale, right * x_scale, bottom * y_scale
+
+
+def _box_overlaps(
+    a: tuple[float, float, float, float],
+    b: tuple[float, float, float, float],
+) -> bool:
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    return max(ax1, bx1) < min(ax2, bx2) and max(ay1, by1) < min(ay2, by2)
+
+
+def _candidate_output_value(output: dict[str, object], *, min_confidence: float = 0.35) -> int | None:
+    value = output.get("value")
+    if value is None:
+        return None
+    confidence = output.get("confidence", "")
+    if confidence != "":
+        try:
+            if float(confidence) < min_confidence:
+                return None
+        except (TypeError, ValueError):
+            pass
+    return int(value)
+
+
+def _raw_ocr_digit_outputs(crop_rows: pd.DataFrame) -> list[dict[str, object]]:
+    """Read candidate vote values from the raw PaddleOCR JSON for this crop.
+
+    This is intentionally used before Tesseract because the full-page PaddleOCR
+    output often already contains the vote number, but the parser could not map
+    it to the master-driven expected row.
+    """
+
+    if crop_rows.empty:
+        return []
+    raw_path_value = _first_value(crop_rows, "raw_ocr_path")
+    crop_box = _parse_crop_box(_first_value(crop_rows, "crop_box"))
+    if not raw_path_value or crop_box is None:
+        return []
+
+    raw_path = Path(str(raw_path_value))
+    if not raw_path.exists():
+        return []
+    try:
+        payload = json.loads(raw_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    image_width = float(payload.get("page_width") or 1)
+    image_height = float(payload.get("page_height") or 1)
+    image_path_value = _first_value(crop_rows, "image_path")
+    if image_path_value and Path(str(image_path_value)).exists():
+        try:
+            from PIL import Image
+
+            with Image.open(Path(str(image_path_value))) as image:
+                image_width, image_height = image.size
+        except OSError:
+            pass
+
+    left, top, right, bottom = crop_box
+    expanded_crop = (left - 8, top - 18, right + 80, bottom + 18)
+    outputs: list[dict[str, object]] = []
+    seen: set[tuple[str, int | None]] = set()
+    for line in payload.get("lines") or []:
+        bounds = _bbox(line)
+        if bounds is None:
+            continue
+        image_bounds = _scaled_bbox(
+            bounds,
+            payload,
+            image_width=image_width,
+            image_height=image_height,
+        )
+        if not _box_overlaps(image_bounds, expanded_crop):
+            continue
+        _, line_top, _, line_bottom = image_bounds
+        line_center_y = (line_top + line_bottom) / 2
+        if not (top - 12 <= line_center_y <= bottom + 12):
+            continue
+        text = str(line.get("text", ""))
+        value = extract_leading_digit_cell_value(text, max_digits=4)
+        key = (text, value)
+        if key in seen:
+            continue
+        seen.add(key)
+        outputs.append(
+            {
+                "variant": "raw_ocr",
+                "psm": "",
+                "text": text,
+                "value": value,
+                "crop_path": "",
+                "confidence": line.get("confidence", ""),
+            }
+        )
+    return outputs
 
 
 def _run_tesseract_digits(
@@ -200,14 +338,67 @@ def _summarize_group(
         }
 
     if not tesseract_bin:
+        outputs = _raw_ocr_digit_outputs(ok_rows)
+        raw_values = [
+            value
+            for output in outputs
+            if (value := _candidate_output_value(output)) is not None
+        ]
+        unique_raw_values = sorted(set(raw_values))
+        if len(unique_raw_values) == 1:
+            selected = next(output for output in outputs if output.get("value") == unique_raw_values[0])
+            return {
+                **base,
+                "selected_votes": unique_raw_values[0],
+                "selected_variant": selected.get("variant", ""),
+                "selected_psm": selected.get("psm", ""),
+                "status": "candidate_suggestion",
+                "ocr_outputs": json.dumps(outputs, ensure_ascii=False),
+                "notes": "Review raw OCR vote-cell value, then copy it to data/external/reviewed_vote_cells.csv if source evidence agrees.",
+            }
+        if len(unique_raw_values) > 1:
+            return {
+                **base,
+                "status": "ocr_conflict",
+                "ocr_outputs": json.dumps(outputs, ensure_ascii=False),
+                "notes": "Raw OCR found multiple vote values in this crop; review manually or send this cell to Google fallback.",
+            }
         return {
             **base,
             "status": "tesseract_unavailable",
+            "ocr_outputs": json.dumps(outputs, ensure_ascii=False),
             "notes": "Install tesseract or use Google Vision fallback for these crop paths.",
         }
 
-    outputs = _ocr_crop_paths(ok_rows, tesseract_bin=tesseract_bin, psms=psms, lang=lang)
-    values = [int(output["value"]) for output in outputs if output.get("value") is not None]
+    outputs = _raw_ocr_digit_outputs(ok_rows)
+    raw_values = [
+        value for output in outputs if (value := _candidate_output_value(output)) is not None
+    ]
+    unique_raw_values = sorted(set(raw_values))
+    if len(unique_raw_values) == 1:
+        selected = next(output for output in outputs if output.get("value") == unique_raw_values[0])
+        return {
+            **base,
+            "selected_votes": unique_raw_values[0],
+            "selected_variant": selected.get("variant", ""),
+            "selected_psm": selected.get("psm", ""),
+            "status": "candidate_suggestion",
+            "ocr_outputs": json.dumps(outputs, ensure_ascii=False),
+            "notes": "Review raw OCR vote-cell value, then copy it to data/external/reviewed_vote_cells.csv if source evidence agrees.",
+        }
+
+    if len(unique_raw_values) > 1:
+        return {
+            **base,
+            "status": "ocr_conflict",
+            "ocr_outputs": json.dumps(outputs, ensure_ascii=False),
+            "notes": "Raw OCR found multiple vote values in this crop; review manually or send this cell to Google fallback.",
+        }
+
+    outputs = outputs + _ocr_crop_paths(ok_rows, tesseract_bin=tesseract_bin, psms=psms, lang=lang)
+    values = [
+        value for output in outputs if (value := _candidate_output_value(output)) is not None
+    ]
     output_json = json.dumps(outputs, ensure_ascii=False)
     if not values:
         return {

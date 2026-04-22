@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.ocr.text_constraints import apply_thai_text_constraints
 from src.pipeline.config import ProjectConfig, load_config
+from src.pipeline.expected_rows import apply_expected_5_18_rows
 from src.pipeline.reviewed_rows import apply_reviewed_rows, apply_reviewed_vote_cells
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
 from src.pipeline.station_inference import apply_station_inference
@@ -320,6 +321,7 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
         cleaned = apply_reviewed_rows(cleaned, config.path("reviewed_rows_file"))
         cleaned = normalize_results(cleaned)
     cleaned = apply_station_inference(cleaned, config)
+    cleaned = apply_expected_5_18_rows(cleaned, config)
     cleaned = apply_master_names(cleaned, config)
     if "reviewed_vote_cells_file" in config.paths:
         cleaned = apply_reviewed_vote_cells(cleaned, config.path("reviewed_vote_cells_file"))

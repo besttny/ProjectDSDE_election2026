@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -105,3 +106,52 @@ def test_digit_crop_suggestions_record_consensus_candidate(monkeypatch, tmp_path
 
     assert suggestions.loc[0, "status"] == "candidate_suggestion"
     assert int(suggestions.loc[0, "selected_votes"]) == 42
+
+
+def test_digit_crop_suggestions_use_raw_ocr_before_tesseract(tmp_path: Path):
+    _write_master_files(tmp_path)
+    processed = tmp_path / "data/processed"
+    raw_dir = tmp_path / "data/raw/ocr"
+    processed.mkdir(parents=True)
+    raw_dir.mkdir(parents=True)
+    raw_path = raw_dir / "sample_page_0001.json"
+    raw_path.write_text(
+        json.dumps(
+            {
+                "page_width": 1000,
+                "page_height": 1400,
+                "lines": [
+                    {
+                        "text": "1.0น",
+                        "confidence": 0.72,
+                        "bbox": [[595, 802], [690, 802], [690, 850], [595, 850]],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    pd.DataFrame(
+        [
+            {
+                "row_index": 8,
+                "form_type": "5_18",
+                "source_pdf": "sample.pdf",
+                "source_page": 1,
+                "polling_station_no": 1,
+                "choice_no": 2,
+                "choice_key_status": "valid",
+                "crop_variant": "raw",
+                "crop_path": str(tmp_path / "data/raw/crops/cell.png"),
+                "crop_box": "580,790,700,860",
+                "raw_ocr_path": str(raw_path),
+                "status": "ok",
+            }
+        ]
+    ).to_csv(processed / "p0_digit_crops_manifest.csv", index=False, encoding="utf-8-sig")
+
+    suggestions = digit_fallback.build_digit_crop_suggestions(_config(tmp_path), tesseract_bin=None)
+
+    assert suggestions.loc[0, "status"] == "candidate_suggestion"
+    assert int(suggestions.loc[0, "selected_votes"]) == 10
+    assert suggestions.loc[0, "selected_variant"] == "raw_ocr"
