@@ -1,8 +1,58 @@
 party_no,canonical_name,aliases,source_pdf,source_page,source_note
-,ไทยก้าวใหม่,ไทยก้าวไหม่,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
-,ประชาชน,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
-,เพื่อไทย,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
-,ประชาธิปัตย์,ปชป.,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
-,ภูมิใจไทย,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
-,รวมไทยสร้างชาติ,รทสช.,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
-,เศรษฐกิจ,,data/raw/pdfs/extracted/เขตเลือกตั้งที่ 2/อำเภอจัตุรัส/ต.กุดน้ำใส-แบ่งเขต_บัญชีรายชื่อ.pdf,1,Official ECT 5/18 constituency result page
+1,ไทยทรัพย์ทวี,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+2,เพื่อชาติไทย,เพื่อชาติโไทย|เพื่อซาติโไทย,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+3,ใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+4,มิติใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+5,รวมใจไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+6,รวมไทยสร้างชาติ,รวมไทยสร้างซาติ,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+7,พลวัต,พลวัตร,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+8,ประชาธิปไตยใหม่,ประชาธิปโดยใหม่,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+9,เพื่อไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+10,ทางเลือกใหม่,ทางเลือกใหม|ทางเลือกไหม|ทางเลือกไหม่,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+11,เศรษฐกิจ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+12,เสรีรวมไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+13,รวมพลังประชาชน,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+14,ท้องที่ไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+15,อนาคตไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+16,พลังเพื่อไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+17,ไทยชนะ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+18,พลังสังคมใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+19,สังคมประชาธิปไตย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+20,ฟิวชัน,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+21,ไทรวมพลัง,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+22,ก้าวอิสระ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+23,ปวงชนไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+24,วิชชั่นใหม่,วิชั่นใหม่,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+25,เพื่อชีวิตใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+26,คลองไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+27,ประชาธิปัตย์,ปชป.,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+28,ไทยก้าวหน้า,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+29,ไทยภักดี,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+30,แรงงานสร้างชาติ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+31,ประชากรไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+32,ครูไทยเพื่อประชาชน,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+33,ประชาชาติ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+34,สร้างอนาคตไทย,สรางอนาคตไทย,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+35,รักชาติ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+36,ไทยพร้อม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+37,ภูมิใจไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+38,พลังธรรมใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+39,กรีน,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+40,ไทยธรรม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+41,แผ่นดินธรรม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+42,กล้าธรรม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+43,พลังประชารัฐ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+44,โอกาสใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+45,เป็นธรรม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+46,ประชาชน,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+47,ประชาไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+48,ไทยสร้างไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+49,ไทยก้าวใหม่,ไทยกววใหม่|ไทยกาวใหม่,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+50,ประชาอาสาชาติ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+51,พร้อม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+52,เครือข่ายชาวนาแห่งประเทศไทย,เครือขายชาวนาแหงประเทศไทย,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+53,ไทยพิทักษ์ธรรม,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+54,ความหวังใหม่,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+55,ไทยรวมไทย,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+56,เพื่อบ้านเมือง,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers
+57,พลังไทยรักชาติ,,https://www.thaipbs.or.th/news/content/501553,,Thai PBS summary of ECT-announced 2026 party-list numbers

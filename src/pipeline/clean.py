@@ -154,6 +154,66 @@ def apply_master_names(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
     return filled
 
 
+def _first_filled(series: pd.Series) -> object:
+    for value in series:
+        if pd.notna(value) and str(value).strip() != "":
+            return value
+    return pd.NA
+
+
+def _best_numeric(series: pd.Series) -> object:
+    numeric = pd.to_numeric(series, errors="coerce").dropna()
+    if numeric.empty:
+        return pd.NA
+    return numeric.iloc[0]
+
+
+def deduplicate_result_rows(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    key_columns = ["form_type", "polling_station_no", "choice_no"]
+    if not set(key_columns).issubset(df.columns):
+        return df
+
+    keyed = df.dropna(subset=["choice_no"]).copy()
+    unkeyed = df[df["choice_no"].isna()].copy()
+    if keyed.empty:
+        return df
+
+    keyed["_has_votes"] = pd.to_numeric(keyed["votes"], errors="coerce").notna()
+    keyed["_is_ok"] = keyed["validation_status"].astype(str).eq("ok")
+    keyed["_ocr_confidence_sort"] = pd.to_numeric(
+        keyed["ocr_confidence"], errors="coerce"
+    ).fillna(0.0)
+    keyed = keyed.sort_values(
+        key_columns + ["_is_ok", "_has_votes", "_ocr_confidence_sort"],
+        ascending=[True, True, True, False, False, False],
+    )
+
+    merged_rows: list[dict[str, object]] = []
+    for _, group in keyed.groupby(key_columns, dropna=False, sort=False):
+        best = group.iloc[0].copy()
+        for column in NUMERIC_COLUMNS:
+            if column in {"votes", "choice_no", "polling_station_no", "constituency_no", "source_page"}:
+                continue
+            best[column] = _best_numeric(group[column])
+        best["votes"] = _best_numeric(group["votes"])
+        for column in RESULT_COLUMNS:
+            if column in NUMERIC_COLUMNS or column not in group.columns:
+                continue
+            best[column] = _first_filled(group[column])
+        if len(group) > 1:
+            distinct_votes = pd.to_numeric(group["votes"], errors="coerce").dropna().nunique()
+            if distinct_votes > 1 or pd.isna(best["votes"]):
+                best["validation_status"] = "needs_review"
+        merged_rows.append({column: best.get(column, pd.NA) for column in RESULT_COLUMNS})
+
+    merged = pd.DataFrame(merged_rows, columns=RESULT_COLUMNS)
+    if not unkeyed.empty:
+        merged = pd.concat([merged, unkeyed[RESULT_COLUMNS]], ignore_index=True)
+    return merged[RESULT_COLUMNS]
+
+
 def build_polling_station_summary(df: pd.DataFrame) -> pd.DataFrame:
     columns = [
         "province",
@@ -216,6 +276,8 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
         cleaned = normalize_results(cleaned)
     cleaned = apply_station_inference(cleaned, config)
     cleaned = apply_master_names(cleaned, config)
+    cleaned = normalize_results(cleaned)
+    cleaned = deduplicate_result_rows(cleaned)
     cleaned = normalize_results(cleaned)
 
     results_path = config.output("election_results")
