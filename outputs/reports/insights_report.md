@@ -31,3 +31,5 @@
 - Rank stations by invalid/no-vote rates after summary fields are extracted.
 - Use validation failures as data-quality evidence, not hidden cleanup work.
 - Add 2023 data to calculate vote swing once external data is loaded.
+
+Generated figure: `/Users/pornmongkol/Documents/ProjectDSDE_election2026/outputs/figures/top_choices.png`
