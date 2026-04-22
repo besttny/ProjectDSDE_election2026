@@ -112,3 +112,47 @@ def test_build_digit_crop_manifest_creates_three_preprocessed_variants(tmp_path:
     assert set(manifest["crop_variant"]) == {"raw", "gray2x", "threshold3x"}
     for path in manifest["crop_path"]:
         assert Path(path).exists()
+
+
+def test_build_digit_crop_manifest_can_filter_row_indexes(tmp_path: Path):
+    config = _config(tmp_path)
+    image_dir = tmp_path / "data/raw/images/5_18/sample"
+    raw_dir = tmp_path / "data/raw/ocr/5_18/sample"
+    processed_dir = tmp_path / "data/processed"
+    image_dir.mkdir(parents=True)
+    raw_dir.mkdir(parents=True)
+    processed_dir.mkdir(parents=True)
+
+    Image.new("RGB", (1000, 1400), "white").save(image_dir / "sample_page_0001.png")
+    (raw_dir / "sample_page_0001.json").write_text(
+        json.dumps(_payload(), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    pd.DataFrame(
+        [
+            {
+                "priority": "P0",
+                "reason": "missing_votes",
+                "row_index": 7,
+                "source_pdf": "/content/data/raw/pdfs/sample.pdf",
+                "source_page": 1,
+                "form_type": "5_18",
+                "polling_station_no": 1,
+                "choice_no": 2,
+            },
+            {
+                "priority": "P0",
+                "reason": "missing_votes",
+                "row_index": 8,
+                "source_pdf": "/content/data/raw/pdfs/sample.pdf",
+                "source_page": 1,
+                "form_type": "5_18",
+                "polling_station_no": 1,
+                "choice_no": 2,
+            },
+        ]
+    ).to_csv(processed_dir / "review_queue.csv", index=False, encoding="utf-8-sig")
+
+    manifest = build_digit_crop_manifest(config, row_indexes={8})
+
+    assert manifest["row_index"].drop_duplicates().tolist() == [8]

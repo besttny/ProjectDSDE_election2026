@@ -13,6 +13,7 @@ from src.pipeline.manifest import load_manifest, missing_required_entries, write
 from src.pipeline.ocr_progress import write_ocr_progress
 from src.pipeline.validate import validate_results
 from src.quality.evaluate_accuracy import write_accuracy_outputs
+from src.quality.invalid_text_review import write_invalid_text_review
 from src.quality.master_match import write_master_match_report
 from src.quality.p0_fallback_targets import write_p0_fallback_targets
 from src.quality.review_queue import write_review_queue
@@ -105,6 +106,7 @@ def main() -> None:
     progress_path = write_ocr_progress(config)
     master_match_path = write_master_match_report(config)
     review_queue_path = write_review_queue(config)
+    invalid_text_review_path, invalid_text_missing_vote_path = write_invalid_text_review(config)
     p0_fallback_targets_path = write_p0_fallback_targets(config)
     digit_crops_path = None
     if args.prepare_digit_crops:
@@ -124,6 +126,10 @@ def main() -> None:
     print(f"OCR progress: {progress_path}")
     print(f"Master match report: {master_match_path}")
     print(f"Review queue: {review_queue_path}")
+    print(
+        "Invalid text review: "
+        f"{invalid_text_review_path}, {invalid_text_missing_vote_path}"
+    )
     print(f"P0 fallback targets: {p0_fallback_targets_path}")
     if digit_crops_path is not None:
         print(f"P0 digit crop manifest: {digit_crops_path}")

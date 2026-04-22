@@ -67,6 +67,18 @@ def _read_review_queue(config: ProjectConfig) -> pd.DataFrame:
     return pd.read_csv(path) if path.exists() else pd.DataFrame()
 
 
+def _read_row_index_filter(path: Path | None) -> set[int] | None:
+    if path is None:
+        return None
+    if not path.exists():
+        raise FileNotFoundError(f"Row-index filter file not found: {path}")
+    frame = pd.read_csv(path)
+    if "row_index" not in frame.columns:
+        raise ValueError("Row-index filter CSV must include a row_index column")
+    values = pd.to_numeric(frame["row_index"], errors="coerce").dropna().astype(int)
+    return set(values.tolist())
+
+
 def _candidate_paths(base_dir: Path, source_pdf: object, page_no: int) -> list[Path]:
     stem = _source_stem(source_pdf)
     pattern = f"*/{stem}/{stem}_page_{page_no:04d}.*"
@@ -332,7 +344,12 @@ def _save_crop_variants(
     return variants
 
 
-def _target_rows(queue: pd.DataFrame, *, max_targets: int | None) -> pd.DataFrame:
+def _target_rows(
+    queue: pd.DataFrame,
+    *,
+    max_targets: int | None,
+    row_indexes: set[int] | None = None,
+) -> pd.DataFrame:
     if queue.empty:
         return queue
     rows = queue[
@@ -341,6 +358,9 @@ def _target_rows(queue: pd.DataFrame, *, max_targets: int | None) -> pd.DataFram
         & queue["choice_no"].notna()
         & queue["source_page"].notna()
     ].copy()
+    if row_indexes is not None:
+        queue_row_indexes = pd.to_numeric(rows["row_index"], errors="coerce")
+        rows = rows[queue_row_indexes.isin(row_indexes)].copy()
     rows = rows.drop_duplicates(subset=["row_index", "source_pdf", "source_page", "choice_no"])
     rows["_form_priority"] = (
         rows["form_type"].astype(str).map(FORM_PRIORITY).fillna(99).astype(int)
@@ -358,9 +378,10 @@ def build_digit_crop_manifest(
     config: ProjectConfig,
     *,
     max_targets: int | None = None,
+    row_indexes: set[int] | None = None,
 ) -> pd.DataFrame:
     queue = _read_review_queue(config)
-    targets = _target_rows(queue, max_targets=max_targets)
+    targets = _target_rows(queue, max_targets=max_targets, row_indexes=row_indexes)
     if targets.empty:
         return pd.DataFrame(columns=MANIFEST_COLUMNS)
 
@@ -435,6 +456,7 @@ def write_digit_crop_manifest(
     config: ProjectConfig,
     *,
     max_targets: int | None = None,
+    row_indexes: set[int] | None = None,
 ) -> Path:
     config.ensure_output_dirs()
     output_path = (
@@ -442,7 +464,11 @@ def write_digit_crop_manifest(
         if "p0_digit_crops_manifest" in config.outputs
         else config.path("processed_dir") / "p0_digit_crops_manifest.csv"
     )
-    build_digit_crop_manifest(config, max_targets=max_targets).to_csv(
+    build_digit_crop_manifest(
+        config,
+        max_targets=max_targets,
+        row_indexes=row_indexes,
+    ).to_csv(
         output_path,
         index=False,
         encoding="utf-8-sig",
@@ -454,8 +480,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare digit-only cell crops for P0 missing vote rows.")
     parser.add_argument("--config", default="configs/chaiyaphum_2.yaml")
     parser.add_argument("--max-targets", type=int, default=None)
+    parser.add_argument(
+        "--row-indexes-csv",
+        type=Path,
+        default=None,
+        help="Optional CSV containing row_index values to crop from the P0 missing-votes queue.",
+    )
     args = parser.parse_args()
-    print(write_digit_crop_manifest(load_config(args.config), max_targets=args.max_targets))
+    print(
+        write_digit_crop_manifest(
+            load_config(args.config),
+            max_targets=args.max_targets,
+            row_indexes=_read_row_index_filter(args.row_indexes_csv),
+        )
+    )
 
 
 if __name__ == "__main__":
