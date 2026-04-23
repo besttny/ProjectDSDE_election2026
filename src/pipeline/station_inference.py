@@ -30,6 +30,13 @@ PARTY_HEADER_MARKERS = (
     "5/18(บช)",
 )
 
+PARTY_START_MARKERS = (
+    "รายงานผลการนับคะแนนสมาชิกสภาผู้แทนราษฎรแบบบัญชีรายชื่อ",
+    "รายงานผลการนับคะแนน",
+    "ตามที่ได้มีพระราชกฤษฎีกา",
+    "ได้กำหนดให้วันที่",
+)
+
 CONSTITUENCY_HEADER_MARKERS = (
     "แบบแบ่งเขต",
     "แบ่งเขต",
@@ -114,6 +121,16 @@ def _is_party_header(text: str) -> bool:
     if "บัญชีรายชื่อ" in text and "พรรคการเมือง" in text and "ผู้สมัคร" not in text:
         return True
     return False
+
+
+def _is_party_start_page(text: str) -> bool:
+    if not _is_party_header(text):
+        return False
+    compact = _compact_text(text)
+    return any(
+        marker in text or _compact_text(marker) in compact
+        for marker in PARTY_START_MARKERS
+    )
 
 
 def _is_constituency_header(text: str) -> bool:
@@ -286,6 +303,7 @@ def _auto_page_assignments(raw_dir: Path) -> dict[int, dict[str, int | str]]:
     if pages and pages[0] < start_pages[0]:
         start_pages = [pages[0], *start_pages]
 
+    stations_with_preassigned_party: set[int] = set()
     for station_index, start_page in enumerate(start_pages, start=1):
         next_start = start_pages[station_index] if station_index < len(start_pages) else None
         segment_pages = [
@@ -306,11 +324,35 @@ def _auto_page_assignments(raw_dir: Path) -> dict[int, dict[str, int | str]]:
             # page of a station segment is the safest party-list fallback.
             party_start = segment_pages[2]
 
+        next_station_party_start = None
+        if next_start is not None:
+            party_start_pages = [
+                page for page in segment_pages[1:] if _is_party_start_page(texts[page])
+            ]
+            if len(party_start_pages) > 1:
+                # Some scanned bundles place the party-list pages for the next
+                # station immediately before that station's constituency pages.
+                # Without this lookahead, pages such as local station 9's
+                # party-list block are swallowed by the previous station.
+                next_station_party_start = party_start_pages[-1]
+            elif station_index in stations_with_preassigned_party and party_start is not None:
+                # If the previous segment already gave this station a trailing
+                # party-list block, the next party block in this segment belongs
+                # to the following station. This handles short runs where the
+                # bundle stays in party-before-constituency order for one more
+                # station before returning to the normal order.
+                next_station_party_start = party_start
+        if next_station_party_start is not None:
+            stations_with_preassigned_party.add(station_index + 1)
+
         for page in segment_pages:
+            station_group_local = station_index
+            if next_station_party_start is not None and page >= next_station_party_start:
+                station_group_local = station_index + 1
             form_type = "5_18_partylist" if party_start is not None and page >= party_start else "5_18"
             assignments[page] = {
                 "form_type": form_type,
-                "station_group_local": station_index,
+                "station_group_local": station_group_local,
             }
     return assignments
 

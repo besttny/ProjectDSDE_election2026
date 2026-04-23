@@ -37,5 +37,5 @@ data/processed/parsed/**
 # Generated pipeline outputs/reports. Keep source/manual review inputs in data/external.
 data/processed/*.csv
 data/processed/*.parquet
-outputs/reports/*.md
+outputs/reports/*
 outputs/figures/*

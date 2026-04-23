@@ -95,6 +95,8 @@ Supporting references:
 ## Latest Output Status
 
 Latest `run_all --skip-ocr` completed successfully.
+Latest local handoff artifact:
+`artifacts/post_review_outputs_20260423.zip`
 
 Parsed rows:
 
@@ -102,9 +104,9 @@ Parsed rows:
 - `5_18_partylist`: `19,437`
 - `5_18`: `2,387`
 - `5_17_partylist`: `29`
-- `5_17`: `17`
+- `5_17`: `26`
 - `5_16_partylist`: `20`
-- `5_16`: `2`
+- `5_16`: `3`
 
 Validation summary:
 
@@ -120,44 +122,59 @@ Validation summary:
 - `5_18` station coverage: pass, `341 / 341`
 - `5_18` source evidence coverage: fail, `338 / 341`
 - `5_18_partylist` station coverage: pass, `341 / 341`
-- `5_18_partylist` source evidence coverage: fail, `318 / 341`
+- `5_18_partylist` source evidence coverage: fail, `320 / 341`
 - Negative votes: pass
 - Duplicate result rows: pass, `0`
 - Vote totals over valid votes: pass
 - Exact complete-group choice-vote totals: pass
 - Ballot accounting: pass
-- Needs review rows: warn, `18,915`
+- Needs review rows: warn, `18,863`
 
 Accuracy report:
 
-- Ground truth rows: `49 / 49`
-- Overall field accuracy: `294 / 294 = 1.0`
-- Row exact accuracy: `49 / 49 = 1.0`
+- Ground truth rows: `84 / 84`
+- Overall field accuracy: `504 / 504 = 1.0`
+- Row exact accuracy: `84 / 84 = 1.0`
 - Important caveat: this is sample accuracy only. Do not claim full-district
   99% until more ground truth rows and P0 source/vote issues are reviewed.
 
 Review queue:
 
-- Total rows: `41,832`
-- `P0`: `20,220`
-- `P1`: `21,612`
+- Total rows: `41,637`
+- `P0`: `20,054`
+- `P1`: `21,583`
 - Top reasons:
-  - `parser_marked_needs_review`: `18,915`
-  - `missing_votes`: `18,888`
+  - `parser_marked_needs_review`: `18,863`
+  - `missing_votes`: `18,836`
   - `master_data_unmatched`: `1,930`
-  - `missing_source_page`: `1,332`
-  - `low_ocr_confidence`: `757`
+  - `missing_source_page`: `1,218`
+  - `low_ocr_confidence`: `780`
   - `invalid_text_charset`: `10`
 
 P0 fallback targets:
 
-- `5_18`: `568` targets, `1,572` affected rows
-- `5_18_partylist`: `1,215` targets, `18,613` affected rows
+- Total targets: `1,786`
+- `5_18`: `565` targets, `1,565` affected rows
+- `5_18_partylist`: `1,209` targets, `18,376` affected rows
+- `missing_source_page` targets: `24` targets, `2,436` affected rows
 - Missing source stations:
   - `5_18`: `339, 340, 341`
   - `5_18_partylist`:
-    `9, 91, 124, 322, 323, 324, 325, 326, 327, 328, 329, 330,
+    `124, 322, 323, 324, 325, 326, 327, 328, 329, 330,
     331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341`
+
+Manual review inputs:
+
+- `data/external/reviewed_vote_cells.csv`: `17` visually confirmed digit-crop cells
+  from `5_18` pages.
+- `data/external/reviewed_rows.csv`: `84` manually reviewed constituency rows.
+- `data/external/ground_truth_sample.csv`: `84` ground-truth rows across
+  `12` reviewed constituency station samples.
+- Station inference has recovered `5_18_partylist` source evidence for stations
+  `9` and `91`; station `124` is still unresolved/ambiguous in current OCR/PDF
+  artifacts.
+- Newly added manually verified constituency stations in this round:
+  `4, 126, 154, 215, 288`
 
 Master data:
 
@@ -168,16 +185,16 @@ Master data:
 
 1. Parsed station coverage is now complete, but source evidence is not.
    - `5_18`: `338 / 341` stations have source PDF/page evidence
-   - `5_18_partylist`: `318 / 341` stations have source PDF/page evidence
+   - `5_18_partylist`: `320 / 341` stations have source PDF/page evidence
    - Rows without source evidence are scaffold rows and must stay
      `needs_review` until a real PDF/page and vote values are confirmed.
 
 2. Many rows still need review.
-   - Current `needs_review_rows`: `18,915`
-   - Current P0 rows: `20,220`
+   - Current `needs_review_rows`: `18,863`
+   - Current P0 rows: `20,054`
 
 3. Current sample accuracy is perfect but too small for a final claim.
-   - `ground_truth_sample.csv` has `49` rows.
+   - `ground_truth_sample.csv` has `84` rows.
    - Add more reviewed units from different PDFs/subdistricts before claiming
      full 99% accuracy.
 
@@ -191,14 +208,36 @@ Master data:
    - Recommended next OCR improvement is cell-crop digits OCR for P0/missing
      vote cells.
 
+6. Current `missing_source_page` gaps now look like source-asset coverage gaps,
+   not just parser misses.
+   - The unresolved targets are still exactly:
+     - `5_18`: `339, 340, 341`
+     - `5_18_partylist`: `124, 322-341`
+   - Fixed-form source PDFs at the end of the manifest do not currently have
+     enough pages to cover the expected station counts if you assume the normal
+     `2 pages/station` for `5_18` and `4 pages/station` for `5_18_partylist`.
+   - Concrete current evidence from raw OCR page counts:
+     - `ตาเนิน-001-บัญชีรายชื่อ.PDF`: `52` pages -> `13` assigned stations
+       while `ตาเนิน-001-แบ่งเขต.PDF` has `32` pages -> `16` assigned stations
+     - `รังงาม-001-บัญชีรายชื่อ.PDF`: `28` pages -> `7` assigned stations
+       while `รังงาม-001-แบ่งเขต.PDF` has `20` pages -> `10` assigned stations
+     - `หนองฉิม-001-บัญชีรายชื่อ.PDF`: `60` pages -> `15` assigned stations
+       and `หนองฉิม-001-แบ่งเขต.PDF`: `30` pages -> `15` assigned stations
+   - This means `5_18_partylist 322-341` cannot be recovered honestly from the
+     current extracted PDF set unless more official pages/files are found.
+
 ## Recommended Next Steps
 
 1. Start with `data/processed/p0_fallback_targets.csv`.
-   - Prioritize rows where `reasons` contains `missing_source_page`.
-   - Then review `missing_votes` targets by source PDF/page.
-2. Locate or confirm source pages for:
-   - `5_18` stations `339,340,341`
-   - `5_18_partylist` stations `9,91,124,322-341`
+   - Continue with `missing_votes` targets that already have source PDF/page.
+   - Use `data/processed/digit_crop_ocr_suggestions.csv` as a shortlist, but
+     visually verify each crop before copying anything into reviewed data.
+2. Treat `missing_source_page` in two buckets:
+   - `5_18_partylist` station `124`: still ambiguous around
+     `ต.หนองบัวใหญ่-แบ่งเขต_บัญชีรายชื่อ.pdf` pages `68-71`
+   - `5_18 339-341` and `5_18_partylist 322-341`: likely blocked by missing
+     source pages/files in the current extracted PDF set; verify against
+     official source or prepared Google Drive zip before editing inference again
 3. For confirmed pages, crop vote cells or use Google Vision/manual review and
    record corrections in:
    - `data/external/reviewed_vote_cells.csv`
@@ -223,8 +262,10 @@ data/processed/partylist_votes.csv
 ## Suggested Prompt For New AI Chat
 
 Read `AI_HANDOFF_CONTEXT.md` and continue from the recommended next steps.
-First, inspect `data/processed/p0_fallback_targets.csv` and fix the
-`missing_source_page` rows by locating the real PDF/page or marking the source
-as unavailable. Then use crop/Google/manual review to fill P0 `missing_votes`
-into `data/external/reviewed_vote_cells.csv`, rerun `run_all --skip-ocr`, and
-report source evidence coverage, review queue counts, and accuracy.
+First, inspect `data/processed/p0_fallback_targets.csv` and continue with P0
+`missing_votes` rows that already have source PDF/page. Use
+`data/processed/digit_crop_ocr_suggestions.csv` plus crop images for manual
+verification, copy confirmed values into `data/external/reviewed_vote_cells.csv`,
+rerun `run_all --skip-ocr`, and report review queue deltas. Separately audit the
+remaining `missing_source_page` rows and distinguish parser bugs from genuinely
+missing/incomplete source PDFs before changing station inference again.
