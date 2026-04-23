@@ -28,6 +28,80 @@ def _as_float(value: object, default: float) -> float:
         return default
 
 
+def _as_int(value: object, default: int) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _longest_dark_run(values: list[int], *, threshold: int) -> int:
+    longest = 0
+    current = 0
+    for value in values:
+        if value <= threshold:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _line_removal_options(options: dict[str, Any]) -> dict[str, Any]:
+    line_removal = options.get("line_removal")
+    if isinstance(line_removal, dict):
+        merged = dict(line_removal)
+        merged.setdefault("enabled", True)
+        return merged
+    if options.get("remove_lines"):
+        return {"enabled": True}
+    return {"enabled": False}
+
+
+def _remove_ruled_lines(image: Image.Image, options: dict[str, Any]) -> Image.Image:
+    line_options = _line_removal_options(options)
+    if not line_options.get("enabled", False):
+        return image
+
+    cleaned = image.convert("L").copy()
+    pixels = cleaned.load()
+    width, height = cleaned.size
+    threshold = _as_int(line_options.get("threshold", 175), 175)
+    thickness = max(_as_int(line_options.get("thickness", 1), 1), 0)
+
+    rows_to_clear: list[int] = []
+    if line_options.get("horizontal", True):
+        min_run = max(int(width * _as_float(line_options.get("horizontal_min_run_ratio", 0.45), 0.45)), 1)
+        rows_to_clear = [
+            y
+            for y in range(height)
+            if _longest_dark_run([pixels[x, y] for x in range(width)], threshold=threshold)
+            >= min_run
+        ]
+
+    columns_to_clear: list[int] = []
+    if line_options.get("vertical", True):
+        min_run = max(int(height * _as_float(line_options.get("vertical_min_run_ratio", 0.55), 0.55)), 1)
+        columns_to_clear = [
+            x
+            for x in range(width)
+            if _longest_dark_run([pixels[x, y] for y in range(height)], threshold=threshold)
+            >= min_run
+        ]
+
+    for y in rows_to_clear:
+        for yy in range(max(0, y - thickness), min(height, y + thickness + 1)):
+            for x in range(width):
+                pixels[x, yy] = 255
+
+    for x in columns_to_clear:
+        for xx in range(max(0, x - thickness), min(width, x + thickness + 1)):
+            for y in range(height):
+                pixels[xx, y] = 255
+
+    return cleaned
+
+
 def preprocess_image_for_ocr(
     image_path: Path,
     *,
@@ -48,6 +122,7 @@ def preprocess_image_for_ocr(
         image = original.convert("L") if options.get("grayscale", True) else original.copy()
         if options.get("autocontrast", True):
             image = ImageOps.autocontrast(image)
+        image = _remove_ruled_lines(image, options)
         if options.get("sharpen", False):
             image = image.filter(
                 ImageFilter.UnsharpMask(

@@ -174,7 +174,7 @@ def test_partylist_template_vote_cell_crop_box_handles_all_table_pages():
     assert choice_57[1] > choice_35[1] + 1800
 
 
-def test_build_digit_crop_manifest_creates_three_preprocessed_variants(tmp_path: Path):
+def test_build_digit_crop_manifest_creates_preprocessed_digit_variants(tmp_path: Path):
     config = _config(tmp_path)
     image_dir = tmp_path / "data/raw/images/5_18/sample"
     raw_dir = tmp_path / "data/raw/ocr/5_18/sample"
@@ -205,8 +205,13 @@ def test_build_digit_crop_manifest_creates_three_preprocessed_variants(tmp_path:
 
     manifest = build_digit_crop_manifest(config)
 
-    assert manifest["status"].tolist() == ["ok", "ok", "ok"]
-    assert set(manifest["crop_variant"]) == {"raw", "gray2x", "threshold3x"}
+    assert manifest["status"].tolist() == ["ok", "ok", "ok", "ok"]
+    assert set(manifest["crop_variant"]) == {
+        "raw",
+        "gray2x",
+        "threshold3x",
+        "line_removed3x",
+    }
     for path in manifest["crop_path"]:
         assert Path(path).exists()
 
@@ -363,5 +368,10 @@ def test_build_digit_crop_manifest_uses_partylist_template_without_raw_ocr(tmp_p
 
     manifest = build_digit_crop_manifest(config)
 
-    assert manifest["status"].tolist() == ["ok", "ok", "ok"]
-    assert set(manifest["crop_variant"]) == {"raw", "gray2x", "threshold3x"}
+    assert manifest["status"].tolist() == ["ok", "ok", "ok", "ok"]
+    assert set(manifest["crop_variant"]) == {
+        "raw",
+        "gray2x",
+        "threshold3x",
+        "line_removed3x",
+    }

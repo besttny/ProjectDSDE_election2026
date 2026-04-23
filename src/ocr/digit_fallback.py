@@ -31,7 +31,7 @@ SUGGESTION_COLUMNS = [
     "notes",
 ]
 
-VARIANT_PRIORITY = {"threshold3x": 0, "gray2x": 1, "raw": 2}
+VARIANT_PRIORITY = {"line_removed3x": 0, "threshold3x": 1, "gray2x": 2, "raw": 3}
 
 
 def _read_manifest(config: ProjectConfig) -> pd.DataFrame:

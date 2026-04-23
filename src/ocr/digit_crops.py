@@ -12,6 +12,7 @@ import pandas as pd
 from PIL import Image, ImageOps
 
 from src.ocr.digits import extract_digit_cell_value
+from src.ocr.preprocess import preprocess_image_for_ocr
 from src.pipeline.config import ProjectConfig, load_config
 from src.quality.master_keys import validate_choice_key
 from src.quality.review_queue import write_review_queue
@@ -468,6 +469,31 @@ def _save_crop_variants(
         threshold_path = output_base.with_name(f"{output_base.name}__threshold3x.png")
         threshold.save(threshold_path)
         variants.append(("threshold3x", threshold_path))
+
+        line_removed = preprocess_image_for_ocr(
+            raw_path,
+            output_dir=output_base.parent,
+            profile_name="line_removed3x",
+            options={
+                "mode": "line_removed3x",
+                "grayscale": True,
+                "autocontrast": True,
+                "line_removal": {
+                    "enabled": True,
+                    "horizontal": True,
+                    "vertical": True,
+                    "threshold": 175,
+                    "thickness": 1,
+                    "horizontal_min_run_ratio": 0.55,
+                    "vertical_min_run_ratio": 0.60,
+                },
+                "sharpen": True,
+                "sharpen_percent": 160,
+                "upscale": 3,
+                "threshold": 180,
+            },
+        )
+        variants.append(("line_removed3x", line_removed.path))
     return variants
 
 

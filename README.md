@@ -139,10 +139,11 @@ The default OCR config is tuned for Colab Pro accuracy: `dpi: 350`, PaddleOCR
 Thai recognition only, `device=gpu:0`, `text_det_limit_side_len: 2240`, and
 automatic zone OCR. Metadata/summary/table zones use separate OCR profiles:
 metadata and summary are preprocessed for Thai text, table zones are sharpened
-and upscaled, and zone OCR drops Latin-only noise because official forms should
-contain Thai text plus numeric fields. Raw OCR JSON includes an OCR-mode
-signature, so selected OCR reruns will refresh old raw JSON when DPI,
-preprocessing, language, zone, or Paddle settings change.
+and upscaled with conservative table-line removal, and zone OCR drops
+Latin-only noise because official forms should contain Thai text plus numeric
+fields. Raw OCR JSON includes an OCR-mode signature, so selected OCR reruns
+will refresh old raw JSON when DPI, preprocessing, language, zone, or Paddle
+settings change.
 
 Table OCR is also split by the six official document types so preprocessing and
 Paddle thresholds can match each form instead of using one scan recipe for all
@@ -158,6 +159,18 @@ pages:
 Mixed `5_18_auto` PDFs are handled page-by-page: the full-page OCR reads the
 header first, then table-zone OCR uses either the `5_18` or `5_18_partylist`
 profile for that page.
+For the most important field, vote counts, the pipeline can also crop
+digit-only cells from P0 missing-vote rows with raw/gray/threshold/line-removed
+variants before optional digit-only OCR:
+
+```bash
+python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr \
+  --prepare-digit-crops --prepare-digit-suggestions --max-digit-crop-targets 100
+```
+
+After each run, `data/processed/error_analysis_report.csv` and
+`outputs/reports/error_analysis_report.md` summarize review reasons by form and
+highlight source pages where OCR/validation issues cluster.
 If Colab runs out of memory, reduce the batch range first before lowering DPI.
 For the A100 accuracy-first full Colab run, use `02_ocr_full_run_colab.ipynb`
 with local scratch enabled. Its `accuracy` profile uses `device=gpu:0`,

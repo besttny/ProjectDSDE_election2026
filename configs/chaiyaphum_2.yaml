@@ -63,6 +63,14 @@ ocr:
         mode: table_text
         grayscale: true
         autocontrast: true
+        line_removal:
+          enabled: true
+          horizontal: true
+          vertical: true
+          threshold: 175
+          thickness: 1
+          horizontal_min_run_ratio: 0.45
+          vertical_min_run_ratio: 0.55
         sharpen: true
         sharpen_percent: 180
         upscale: 1.5
@@ -70,6 +78,14 @@ ocr:
         mode: advance_constituency_table_text
         grayscale: true
         autocontrast: true
+        line_removal:
+          enabled: true
+          horizontal: true
+          vertical: true
+          threshold: 175
+          thickness: 1
+          horizontal_min_run_ratio: 0.45
+          vertical_min_run_ratio: 0.55
         sharpen: true
         sharpen_percent: 170
         upscale: 1.45
@@ -77,6 +93,14 @@ ocr:
         mode: advance_partylist_table_text
         grayscale: true
         autocontrast: true
+        line_removal:
+          enabled: true
+          horizontal: true
+          vertical: true
+          threshold: 175
+          thickness: 1
+          horizontal_min_run_ratio: 0.45
+          vertical_min_run_ratio: 0.52
         sharpen: true
         sharpen_percent: 190
         upscale: 1.6
@@ -84,6 +108,14 @@ ocr:
         mode: election_day_constituency_table_text
         grayscale: true
         autocontrast: true
+        line_removal:
+          enabled: true
+          horizontal: true
+          vertical: true
+          threshold: 175
+          thickness: 1
+          horizontal_min_run_ratio: 0.45
+          vertical_min_run_ratio: 0.55
         sharpen: true
         sharpen_percent: 185
         upscale: 1.5
@@ -91,6 +123,14 @@ ocr:
         mode: election_day_partylist_table_text
         grayscale: true
         autocontrast: true
+        line_removal:
+          enabled: true
+          horizontal: true
+          vertical: true
+          threshold: 175
+          thickness: 1
+          horizontal_min_run_ratio: 0.45
+          vertical_min_run_ratio: 0.52
         sharpen: true
         sharpen_percent: 200
         upscale: 1.7
@@ -226,6 +266,8 @@ outputs:
   accuracy_report: data/processed/accuracy_report.csv
   accuracy_details: data/processed/accuracy_details.csv
   accuracy_report_md: outputs/reports/accuracy_report.md
+  error_analysis_report: data/processed/error_analysis_report.csv
+  error_analysis_report_md: outputs/reports/error_analysis_report.md
   master_match_report: data/processed/master_match_report.csv
   insights_report: outputs/reports/insights_report.md
   p0_fallback_targets: data/processed/p0_fallback_targets.csv

@@ -15,6 +15,7 @@ from src.pipeline.manifest import load_manifest, missing_required_entries, write
 from src.pipeline.ocr_progress import write_ocr_progress
 from src.pipeline.validate import validate_results
 from src.quality.evaluate_accuracy import write_accuracy_outputs
+from src.quality.error_analysis import write_error_analysis
 from src.quality.invalid_text_review import write_invalid_text_review
 from src.quality.master_match import write_master_match_report
 from src.quality.p0_fallback_targets import write_p0_fallback_targets
@@ -139,6 +140,7 @@ def main() -> None:
             )
         digit_suggestions_path = write_digit_crop_suggestions(config)
     accuracy_paths = write_accuracy_outputs(config)
+    error_analysis_paths = write_error_analysis(config)
     insights_path = build_insights(config)
 
     print(f"Cleaned results: {results_path}")
@@ -160,6 +162,7 @@ def main() -> None:
     if digit_suggestions_path is not None:
         print(f"Digit crop OCR suggestions: {digit_suggestions_path}")
     print(f"Accuracy report: {accuracy_paths[0]}, {accuracy_paths[1]}, {accuracy_paths[2]}")
+    print(f"Error analysis: {error_analysis_paths[0]}, {error_analysis_paths[1]}")
     print(f"Insights report: {insights_path}")
 
 
