@@ -4,11 +4,13 @@ import pytest
 
 from src.ocr.extract import (
     _ocr_mode_signature,
+    _profile_form_type_for_page,
     _raw_json_supports_current_mode,
     _scope_ocr_profile,
     select_manifest_entries,
 )
-from src.pipeline.config import ProjectConfig
+from src.ocr.form_types import OFFICIAL_OCR_FORM_TYPES
+from src.pipeline.config import ProjectConfig, _simple_yaml_load, load_config
 from src.pipeline.manifest import ManifestEntry
 
 
@@ -91,6 +93,71 @@ def test_scope_ocr_profile_applies_zone_and_form_overrides(tmp_path: Path):
     assert profile["line_filter"] == "thai_numeric"
     assert profile["confidence_threshold"] == 0.40
     assert profile["languages"] == ["th"]
+
+
+def test_profile_form_type_for_mixed_5_18_partylist_page():
+    lines = [
+        {"text": "แบบรายงานผลการนับคะแนนแบบบัญชีรายชื่อ ส.ส. ๕/๑๘ (บช)"},
+        {"text": "จำนวนคะแนนที่แต่ละพรรคการเมืองได้รับ"},
+    ]
+
+    assert _profile_form_type_for_page("5_18_auto", lines) == "5_18_partylist"
+
+
+def test_profile_form_type_for_mixed_5_18_constituency_page():
+    lines = [
+        {"text": "รายงานผลการนับคะแนนสมาชิกสภาผู้แทนราษฎรแบบแบ่งเขตเลือกตั้ง"},
+        {"text": "จำนวนผู้มีสิทธิเลือกตั้งตามบัญชีรายชื่อผู้มีสิทธิเลือกตั้ง"},
+    ]
+
+    assert _profile_form_type_for_page("5_18_auto", lines) == "5_18"
+
+
+def test_profile_form_type_leaves_non_mixed_forms_unchanged():
+    assert (
+        _profile_form_type_for_page("5_17_partylist", [{"text": "แบบบัญชีรายชื่อ"}])
+        == "5_17_partylist"
+    )
+
+
+def test_config_defines_ocr_profiles_for_all_official_form_types():
+    config = load_config(Path(__file__).parents[1] / "configs/chaiyaphum_2.yaml")
+    forms = config.ocr["profiles"]["forms"]
+
+    for form_type in OFFICIAL_OCR_FORM_TYPES:
+        assert form_type in forms
+        assert "table" in forms[form_type]["zones"]
+        profile = _scope_ocr_profile(config, form_type=form_type, zone_name="table")
+        assert profile["languages"] == ["th"]
+        assert profile["fallback_engine"] == ""
+        assert profile["line_filter"] == "thai_numeric"
+
+    assert (
+        _scope_ocr_profile(config, form_type="5_18", zone_name="table")["preprocess"]
+        == "election_day_constituency_table_text"
+    )
+    assert (
+        _scope_ocr_profile(config, form_type="5_18_partylist", zone_name="table")[
+            "preprocess"
+        ]
+        == "election_day_partylist_table_text"
+    )
+
+
+def test_fallback_yaml_loader_unquotes_form_profile_keys():
+    data = _simple_yaml_load(
+        """
+ocr:
+  profiles:
+    forms:
+      "5_16":
+        zones:
+          table:
+            preprocess: advance_constituency_table_text
+"""
+    )
+
+    assert "5_16" in data["ocr"]["profiles"]["forms"]
 
 
 def test_raw_json_support_check_requires_current_ocr_signature(tmp_path: Path):

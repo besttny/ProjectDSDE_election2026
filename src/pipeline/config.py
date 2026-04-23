@@ -94,6 +94,13 @@ def _parse_scalar(value: str) -> Any:
         return value
 
 
+def _parse_mapping_key(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
 def _simple_yaml_load(text: str) -> dict[str, Any]:
     """Small fallback parser for this repo's simple config file.
 
@@ -126,7 +133,7 @@ def _simple_yaml_load(text: str) -> dict[str, Any]:
         key, separator, value = stripped.partition(":")
         if not separator:
             raise ValueError(f"Invalid fallback YAML line: {line}")
-        key = key.strip()
+        key = _parse_mapping_key(key)
         value = value.strip()
         if value:
             if not isinstance(parent, dict):

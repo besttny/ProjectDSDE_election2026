@@ -66,6 +66,34 @@ ocr:
         sharpen: true
         sharpen_percent: 180
         upscale: 1.5
+      advance_constituency_table_text:
+        mode: advance_constituency_table_text
+        grayscale: true
+        autocontrast: true
+        sharpen: true
+        sharpen_percent: 170
+        upscale: 1.45
+      advance_partylist_table_text:
+        mode: advance_partylist_table_text
+        grayscale: true
+        autocontrast: true
+        sharpen: true
+        sharpen_percent: 190
+        upscale: 1.6
+      election_day_constituency_table_text:
+        mode: election_day_constituency_table_text
+        grayscale: true
+        autocontrast: true
+        sharpen: true
+        sharpen_percent: 185
+        upscale: 1.5
+      election_day_partylist_table_text:
+        mode: election_day_partylist_table_text
+        grayscale: true
+        autocontrast: true
+        sharpen: true
+        sharpen_percent: 200
+        upscale: 1.7
   profiles:
     default:
       languages:
@@ -95,13 +123,82 @@ ocr:
           text_det_limit_side_len: 2240
           text_rec_score_thresh: 0.20
     forms:
-      5_18_partylist:
+      "5_16":
+        document_label: ส.ส.5/16 เลือกล่วงหน้าในเขต - คะแนน ส.ส.เขต
+        default:
+          line_filter: thai_numeric
         zones:
           table:
-            preprocess: table_text
+            preprocess: advance_constituency_table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.45
+            paddle:
+              text_det_limit_side_len: 2240
+              text_rec_score_thresh: 0.20
+      "5_16_partylist":
+        document_label: ส.ส.5/16 (บช) เลือกล่วงหน้าในเขต - คะแนนบัญชีรายชื่อ
+        default:
+          line_filter: thai_numeric
+        zones:
+          table:
+            preprocess: advance_partylist_table_text
             line_filter: thai_numeric
             confidence_threshold: 0.40
-      5_18_auto:
+            paddle:
+              text_det_limit_side_len: 2560
+              text_rec_score_thresh: 0.18
+      "5_17":
+        document_label: ส.ส.5/17 เลือกล่วงหน้านอกเขต - คะแนน ส.ส.เขต
+        default:
+          line_filter: thai_numeric
+        zones:
+          table:
+            preprocess: advance_constituency_table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.45
+            paddle:
+              text_det_limit_side_len: 2240
+              text_rec_score_thresh: 0.20
+      "5_17_partylist":
+        document_label: ส.ส.5/17 (บช) เลือกล่วงหน้านอกเขต - คะแนนบัญชีรายชื่อ
+        default:
+          line_filter: thai_numeric
+        zones:
+          table:
+            preprocess: advance_partylist_table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.40
+            paddle:
+              text_det_limit_side_len: 2560
+              text_rec_score_thresh: 0.18
+      "5_18":
+        document_label: ส.ส.5/18 วันเลือกตั้ง - คะแนน ส.ส.เขต
+        default:
+          line_filter: thai_numeric
+        zones:
+          table:
+            preprocess: election_day_constituency_table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.45
+            paddle:
+              text_det_limit_side_len: 2240
+              text_rec_score_thresh: 0.20
+      "5_18_partylist":
+        document_label: ส.ส.5/18 (บช) วันเลือกตั้ง - คะแนนบัญชีรายชื่อ
+        default:
+          line_filter: thai_numeric
+        zones:
+          table:
+            preprocess: election_day_partylist_table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.40
+            paddle:
+              text_det_limit_side_len: 2560
+              text_rec_score_thresh: 0.18
+      "5_18_auto":
+        document_label: Mixed ส.ส.5/18 bundle; full-page OCR resolves table zones to 5_18 or 5_18_partylist per page
+        default:
+          line_filter: thai_numeric
         zones:
           table:
             preprocess: table_text

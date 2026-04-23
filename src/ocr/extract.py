@@ -16,6 +16,7 @@ from src.ocr.engines import (
     build_engine,
     run_ocr_with_fallback,
 )
+from src.ocr.form_types import infer_5_18_form_type_from_texts
 from src.ocr.language_filter import filter_ocr_lines_by_language
 from src.ocr.parser import parse_ocr_json, rows_to_dataframe
 from src.ocr.preprocess import OCRImage, preprocess_image_for_ocr, rescale_ocr_lines
@@ -151,6 +152,14 @@ def _scope_ocr_profile(
                 profile = _deep_merge(profile, form_zone_profiles.get(zone_name, {}))
     profile["languages"] = _list_value(profile.get("languages"), ["th"])
     return profile
+
+
+def _profile_form_type_for_page(entry_form_type: str, lines: list[dict[str, Any]]) -> str:
+    if entry_form_type != "5_18_auto":
+        return entry_form_type
+
+    texts = [str(line.get("text", "")) for line in lines]
+    return infer_5_18_form_type_from_texts(texts, default=entry_form_type)
 
 
 def _preprocess_profile_options(config: ProjectConfig, profile_name: str) -> dict[str, Any]:
@@ -373,6 +382,7 @@ def _ocr_page(
     )
     full_lines = rescale_ocr_lines(full_lines, full_ocr_input)
     full_lines, full_dropped = _filter_lines_for_profile(full_lines, profile=full_profile)
+    zone_profile_form_type = _profile_form_type_for_page(entry.form_type, full_lines)
 
     zone_options = _zone_ocr_options(config)
     if not bool(zone_options.get("enabled", False)):
@@ -404,6 +414,7 @@ def _ocr_page(
                 "ocr_engine": full_engine_name,
                 "ocr_confidence": round(average_confidence(full_lines), 4),
                 "line_count": len(full_lines),
+                "profile_form_type": zone_profile_form_type,
             }
         )
 
@@ -411,7 +422,7 @@ def _ocr_page(
         crop_path = crop_zone_image(image_path, zone, images_zone_dir)
         zone_profile = _scope_ocr_profile(
             config,
-            form_type=entry.form_type,
+            form_type=zone_profile_form_type,
             zone_name=zone.name,
         )
         zone_ocr_input = _prepare_ocr_input(
@@ -447,6 +458,7 @@ def _ocr_page(
                 "ocr_engine": zone_engine_name,
                 "ocr_confidence": round(average_confidence(zone_lines), 4),
                 "line_count": len(zone_lines),
+                "profile_form_type": zone_profile_form_type,
             }
         )
 

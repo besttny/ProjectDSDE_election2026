@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 
 from src.ocr.digits import extract_digit_cell_value, extract_first_int, normalize_thai_digits
+from src.ocr.form_types import infer_5_18_form_type_from_texts
 from src.pipeline.schema import RESULT_COLUMNS
 
 normalize_digits = normalize_thai_digits
@@ -318,13 +319,11 @@ def infer_form_and_vote_type(
     if form_type != "5_18_auto" and vote_type != "auto":
         return form_type, vote_type
 
-    joined = " ".join(texts)
-    header = " ".join(texts[:12])
-    if "แบ่งเขต" in header:
-        return "5_18", "constituency"
-    if "บัญชีรายชื่อ" in header and "ผู้มีสิทธิ" not in header:
-        return "5_18_partylist", "party_list"
-    return "5_18", "constituency"
+    resolved_form_type = infer_5_18_form_type_from_texts(texts, default="5_18")
+    resolved_vote_type = (
+        "party_list" if resolved_form_type == "5_18_partylist" else "constituency"
+    )
+    return resolved_form_type, resolved_vote_type
 
 
 def parse_ocr_payload(
