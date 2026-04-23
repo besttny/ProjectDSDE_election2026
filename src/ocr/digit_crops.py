@@ -383,6 +383,63 @@ def template_vote_cell_crop_box(
     return crop_box
 
 
+def partylist_template_vote_cell_crop_box(
+    payload: dict[str, Any],
+    *,
+    choice_no: int,
+    image_width: int,
+    image_height: int,
+) -> tuple[int, int, int, int] | None:
+    """Fixed-layout vote-cell crop for 5/18 party-list rows.
+
+    Party-list OCR often misses or misreads the printed party-list number,
+    which makes anchor-based row detection unreliable. The official form uses
+    stable continuation pages: choices 1-10 on the first table page, 11-34 on
+    the second, and 35-57 on the third.
+    """
+
+    if choice_no <= 0 or choice_no > 57:
+        return None
+
+    page_width = float(payload.get("page_width") or image_width)
+    page_height = float(payload.get("page_height") or image_height)
+    if 1 <= choice_no <= 10:
+        row_slot = choice_no
+        center_y = page_height * 0.632 + (row_slot - 1) * page_height * 0.0299
+    elif 11 <= choice_no <= 34:
+        row_slot = choice_no - 10
+        center_y = page_height * 0.313 + (row_slot - 1) * page_height * 0.0263
+    else:
+        row_slot = choice_no - 34
+        center_y = page_height * 0.286 + (row_slot - 1) * page_height * 0.0264
+
+    crop_height = max(page_height * 0.023, 64.0)
+    payload_crop_box = (
+        page_width * 0.50,
+        center_y - crop_height / 2,
+        page_width * 0.635,
+        center_y + crop_height / 2,
+    )
+    image_crop_box = _scale_payload_box_to_image(
+        payload_crop_box,
+        payload,
+        image_width=image_width,
+        image_height=image_height,
+    )
+    crop_box = _clamp_box(
+        image_crop_box,
+        width=image_width,
+        height=image_height,
+    )
+    if not _crop_box_is_usable(
+        crop_box,
+        image_width=image_width,
+        image_height=image_height,
+    ):
+        return None
+    return crop_box
+
+
 def _save_crop_variants(
     image_path: Path,
     crop_box: tuple[int, int, int, int],
@@ -510,23 +567,43 @@ def build_digit_crop_manifest(
         if image_path is None:
             rows.append({**base_record, "crop_variant": "", "crop_path": "", "crop_box": "", "status": "missing_image", "notes": "Render source PDF page before preparing digit crops"})
             continue
-        if raw_path is None:
-            rows.append({**base_record, "crop_variant": "", "crop_path": "", "crop_box": "", "status": "missing_raw_ocr", "notes": "Raw OCR JSON is required to locate the table row anchor"})
-            continue
-        with raw_path.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
+        payload: dict[str, Any] = {}
+        if raw_path is not None:
+            with raw_path.open("r", encoding="utf-8") as handle:
+                payload = json.load(handle)
         with Image.open(image_path) as image:
+            if not payload:
+                payload = {"page_width": image.width, "page_height": image.height, "lines": []}
             template_slot = (
                 choice_no if str(target.get("form_type", "")).strip() == "5_18" else None
             )
-            crop_box = vote_cell_crop_box(
-                payload,
-                choice_no=choice_no,
-                image_width=image.width,
-                image_height=image.height,
-                template_slot=template_slot,
-                prefer_template=template_slot is not None,
-            )
+            form_type = str(target.get("form_type", "")).strip()
+            if form_type == "5_18_partylist":
+                crop_box = partylist_template_vote_cell_crop_box(
+                    payload,
+                    choice_no=choice_no,
+                    image_width=image.width,
+                    image_height=image.height,
+                )
+                if crop_box is None:
+                    crop_box = vote_cell_crop_box(
+                        payload,
+                        choice_no=choice_no,
+                        image_width=image.width,
+                        image_height=image.height,
+                    )
+            else:
+                crop_box = vote_cell_crop_box(
+                    payload,
+                    choice_no=choice_no,
+                    image_width=image.width,
+                    image_height=image.height,
+                    template_slot=template_slot,
+                    prefer_template=template_slot is not None,
+                )
+            if crop_box is None and raw_path is None:
+                rows.append({**base_record, "crop_variant": "", "crop_path": "", "crop_box": "", "status": "missing_raw_ocr", "notes": "Raw OCR JSON is required to locate this non-template table row anchor"})
+                continue
         if crop_box is None:
             rows.append({**base_record, "crop_variant": "", "crop_path": "", "crop_box": "", "status": "missing_or_invalid_row_anchor", "notes": "Could not locate a usable choice row anchor in the table zone"})
             continue

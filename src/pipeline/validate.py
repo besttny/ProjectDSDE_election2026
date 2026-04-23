@@ -265,6 +265,7 @@ def validate_dataframe(
     expected_polling_stations: int,
     candidate_master_path: Path | None = None,
     party_master_path: Path | None = None,
+    max_vote_cell_value: int = 999,
 ) -> pd.DataFrame:
     report: list[dict[str, str]] = []
 
@@ -369,6 +370,17 @@ def validate_dataframe(
             "fail" if negative_votes else "pass",
             "critical",
             f"{negative_votes} rows have negative votes",
+        )
+    )
+
+    vote_values = pd.to_numeric(df.get("votes", pd.Series(dtype=float)), errors="coerce")
+    implausible_votes = int((vote_values > max_vote_cell_value).sum())
+    report.append(
+        _row(
+            "vote_cell_value_plausibility",
+            "fail" if implausible_votes else "pass",
+            "critical",
+            f"{implausible_votes} rows have votes above {max_vote_cell_value}",
         )
     )
 
@@ -518,6 +530,12 @@ def validate_results(config: ProjectConfig) -> tuple[Path, Path]:
             config.path("master_parties_file")
             if "master_parties_file" in config.paths
             else None
+        ),
+        max_vote_cell_value=int(
+            config.quality.get(
+                "max_vote_cell_value",
+                config.quality.get("auto_digit_fallback_max_votes", 999),
+            )
         ),
     )
     csv_path = config.output("validation_report")

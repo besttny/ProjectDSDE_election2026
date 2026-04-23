@@ -125,6 +125,30 @@ def test_validate_dataframe_flags_complete_choice_totals_that_do_not_match_valid
     assert "1 complete station/form groups" in report.loc["choice_votes_match_valid_votes", "details"]
 
 
+def test_validate_dataframe_flags_implausible_vote_cells():
+    df = pd.DataFrame(
+        [
+            {
+                "form_type": "5_18",
+                "polling_station_no": 1,
+                "choice_no": 1,
+                "votes": 1000,
+                "validation_status": "ok",
+            }
+        ]
+    )
+
+    report = validate_dataframe(
+        df,
+        manifest_entries=[],
+        expected_polling_stations=1,
+        max_vote_cell_value=999,
+    ).set_index("check")
+
+    assert report.loc["vote_cell_value_plausibility", "status"] == "fail"
+    assert "above 999" in report.loc["vote_cell_value_plausibility", "details"]
+
+
 def test_validate_dataframe_checks_candidate_master_scope_and_one_person_rule(tmp_path: Path):
     candidate_master = tmp_path / "master_candidates.csv"
     candidate_master.write_text(

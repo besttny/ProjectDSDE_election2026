@@ -130,7 +130,12 @@ def _box_overlaps(
     return max(ax1, bx1) < min(ax2, bx2) and max(ay1, by1) < min(ay2, by2)
 
 
-def _candidate_output_value(output: dict[str, object], *, min_confidence: float = 0.35) -> int | None:
+def _candidate_output_value(
+    output: dict[str, object],
+    *,
+    min_confidence: float = 0.35,
+    max_value: int = 999,
+) -> int | None:
     value = output.get("value")
     if value is None:
         return None
@@ -141,7 +146,10 @@ def _candidate_output_value(output: dict[str, object], *, min_confidence: float 
                 return None
         except (TypeError, ValueError):
             pass
-    return int(value)
+    numeric = int(value)
+    if numeric > max_value:
+        return None
+    return numeric
 
 
 def _raw_ocr_digit_outputs(crop_rows: pd.DataFrame) -> list[dict[str, object]]:
@@ -327,6 +335,13 @@ def _summarize_group(
             "notes": "Choice number is not in official master; fix parser row alignment before reading vote cells.",
         }
 
+    max_value = int(
+        config.quality.get(
+            "max_vote_cell_value",
+            config.quality.get("auto_digit_fallback_max_votes", 999),
+        )
+    )
+
     ok_rows = rows[rows["status"].astype(str).eq("ok")] if "status" in rows.columns else rows
     if ok_rows.empty:
         statuses = sorted({str(value) for value in rows.get("status", []) if str(value)})
@@ -342,7 +357,7 @@ def _summarize_group(
         raw_values = [
             value
             for output in outputs
-            if (value := _candidate_output_value(output)) is not None
+            if (value := _candidate_output_value(output, max_value=max_value)) is not None
         ]
         unique_raw_values = sorted(set(raw_values))
         if len(unique_raw_values) == 1:
@@ -372,7 +387,9 @@ def _summarize_group(
 
     outputs = _raw_ocr_digit_outputs(ok_rows)
     raw_values = [
-        value for output in outputs if (value := _candidate_output_value(output)) is not None
+        value
+        for output in outputs
+        if (value := _candidate_output_value(output, max_value=max_value)) is not None
     ]
     unique_raw_values = sorted(set(raw_values))
     if len(unique_raw_values) == 1:
@@ -397,7 +414,9 @@ def _summarize_group(
 
     outputs = outputs + _ocr_crop_paths(ok_rows, tesseract_bin=tesseract_bin, psms=psms, lang=lang)
     values = [
-        value for output in outputs if (value := _candidate_output_value(output)) is not None
+        value
+        for output in outputs
+        if (value := _candidate_output_value(output, max_value=max_value)) is not None
     ]
     output_json = json.dumps(outputs, ensure_ascii=False)
     if not values:

@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.pipeline.clean import apply_manual_corrections, apply_master_key_validation, apply_master_names
+from src.pipeline.clean import (
+    apply_manual_corrections,
+    apply_master_key_validation,
+    apply_master_names,
+    apply_vote_plausibility_constraints,
+)
 from src.pipeline.config import ProjectConfig
 
 
@@ -152,3 +157,24 @@ def test_apply_master_key_validation_marks_unknown_candidate_and_party_numbers(t
     assert validated.loc[1, "validation_status"] == "needs_review"
     assert validated.loc[2, "validation_status"] == "ok"
     assert validated.loc[3, "validation_status"] == "needs_review"
+
+
+def test_apply_vote_plausibility_constraints_removes_impossible_vote_cells(tmp_path: Path):
+    config = ProjectConfig(
+        root=tmp_path,
+        data={"quality": {"max_vote_cell_value": 999}},
+    )
+    df = pd.DataFrame(
+        [
+            {"votes": 613, "validation_status": "ok"},
+            {"votes": 5850, "validation_status": "ok"},
+            {"votes": "", "validation_status": "needs_review"},
+        ]
+    )
+
+    constrained = apply_vote_plausibility_constraints(df, config)
+
+    assert int(constrained.loc[0, "votes"]) == 613
+    assert pd.isna(constrained.loc[1, "votes"])
+    assert constrained.loc[1, "validation_status"] == "needs_review"
+    assert constrained.loc[2, "validation_status"] == "needs_review"

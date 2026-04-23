@@ -83,9 +83,32 @@ def _manifest_source_paths(config: ProjectConfig) -> dict[str, str]:
 
 
 def _station_pages(config: ProjectConfig, *, form_type: str) -> pd.DataFrame:
-    page_map = build_station_page_map(config)
-    if not page_map:
+    pages = _station_page_records(config, form_type=form_type)
+    if pages.empty:
         return _complete_station_pages(pd.DataFrame(), config, form_type=form_type)
+
+    table_pages = (
+        pages.sort_values(["polling_station_no", "source_name", "source_page"], kind="stable")
+        .groupby(["polling_station_no", "source_name"], dropna=False, as_index=False)
+        .first()
+    )
+    table_pages = table_pages.sort_values(["polling_station_no", "source_page"], kind="stable")
+    return _complete_station_pages(table_pages, config, form_type=form_type)
+
+
+def _station_page_records(config: ProjectConfig, *, form_type: str) -> pd.DataFrame:
+    page_map = build_station_page_map(config)
+    columns = [
+        "form_type",
+        "source_name",
+        "source_pdf",
+        "source_page",
+        "polling_station_no",
+        "district",
+        "subdistrict",
+    ]
+    if not page_map:
+        return pd.DataFrame(columns=columns)
 
     source_paths = _manifest_source_paths(config)
     records: list[dict[str, object]] = []
@@ -104,16 +127,67 @@ def _station_pages(config: ProjectConfig, *, form_type: str) -> pd.DataFrame:
             }
         )
     if not records:
-        return _complete_station_pages(pd.DataFrame(), config, form_type=form_type)
+        return pd.DataFrame(columns=columns)
 
-    pages = pd.DataFrame(records)
-    table_pages = (
-        pages.sort_values(["polling_station_no", "source_name", "source_page"], kind="stable")
-        .groupby(["polling_station_no", "source_name"], dropna=False, as_index=False)
-        .first()
-    )
-    table_pages = table_pages.sort_values(["polling_station_no", "source_page"], kind="stable")
-    return _complete_station_pages(table_pages, config, form_type=form_type)
+    pages = pd.DataFrame(records, columns=columns)
+    return pages.sort_values(["polling_station_no", "source_name", "source_page"], kind="stable")
+
+
+def _partylist_page_slot(choice_key: str) -> int | None:
+    numeric = pd.to_numeric(pd.Series([choice_key]), errors="coerce").iloc[0]
+    if pd.isna(numeric):
+        return None
+    choice_no = int(numeric)
+    if 1 <= choice_no <= 10:
+        return 0
+    if 11 <= choice_no <= 34:
+        return 1
+    if 35 <= choice_no <= 57:
+        return 2
+    return None
+
+
+def _partylist_page_lookup(pages: pd.DataFrame) -> dict[tuple[str, int], pd.Series]:
+    lookup: dict[tuple[str, int], pd.Series] = {}
+    if pages.empty:
+        return lookup
+
+    for station_no, group in pages.groupby("polling_station_no", dropna=False, sort=False):
+        station_key = normalize_number_key(station_no)
+        if not station_key:
+            continue
+        ordered = (
+            group.sort_values(["source_name", "source_page"], kind="stable")
+            .drop_duplicates(subset=["source_name", "source_page"], keep="first")
+            .reset_index(drop=True)
+        )
+        for slot in range(min(3, len(ordered))):
+            lookup[(station_key, slot)] = ordered.iloc[slot]
+    return lookup
+
+
+def _station_for_party_choice(
+    station: pd.Series,
+    *,
+    choice_key: str,
+    page_lookup: dict[tuple[str, int], pd.Series],
+) -> pd.Series:
+    slot = _partylist_page_slot(choice_key)
+    if slot is None:
+        return station
+
+    station_key = normalize_number_key(station.get("polling_station_no", ""))
+    page = page_lookup.get((station_key, slot))
+    adjusted = station.copy()
+    if page is None:
+        adjusted["source_page"] = ""
+        return adjusted
+
+    for column in ["source_name", "source_pdf", "source_page", "district", "subdistrict"]:
+        value = page.get(column, "")
+        if pd.notna(value) and str(value).strip() != "":
+            adjusted[column] = value
+    return adjusted
 
 
 def _complete_station_pages(
@@ -392,6 +466,9 @@ def _apply_expected_partylist_rows(df: pd.DataFrame, config: ProjectConfig) -> p
     stations = _station_pages(config, form_type=ELECTION_DAY_PARTYLIST_FORM)
     if parties.empty or stations.empty:
         return df
+    page_lookup = _partylist_page_lookup(
+        _station_page_records(config, form_type=ELECTION_DAY_PARTYLIST_FORM)
+    )
 
     party_keys = set(parties["_party_key"].astype(str))
     observed = _valid_observed_rows(
@@ -409,7 +486,11 @@ def _apply_expected_partylist_rows(df: pd.DataFrame, config: ProjectConfig) -> p
             records.append(
                 _party_record_from_expected(
                     config=config,
-                    station=station,
+                    station=_station_for_party_choice(
+                        station,
+                        choice_key=choice_key,
+                        page_lookup=page_lookup,
+                    ),
                     party=party,
                     observed=lookup.get((station_key, choice_key)),
                 )

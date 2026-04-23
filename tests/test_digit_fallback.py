@@ -155,3 +155,40 @@ def test_digit_crop_suggestions_use_raw_ocr_before_tesseract(tmp_path: Path):
     assert suggestions.loc[0, "status"] == "candidate_suggestion"
     assert int(suggestions.loc[0, "selected_votes"]) == 10
     assert suggestions.loc[0, "selected_variant"] == "raw_ocr"
+
+
+def test_digit_crop_suggestions_reject_out_of_range_values(monkeypatch, tmp_path: Path):
+    _write_master_files(tmp_path)
+    processed = tmp_path / "data/processed"
+    crop_dir = tmp_path / "data/raw/crops"
+    processed.mkdir(parents=True)
+    crop_dir.mkdir(parents=True)
+    crop_path = crop_dir / "cell.png"
+    crop_path.write_bytes(b"not a real image because OCR is mocked")
+    pd.DataFrame(
+        [
+            {
+                "row_index": 8,
+                "form_type": "5_18",
+                "source_pdf": "sample.pdf",
+                "source_page": 1,
+                "polling_station_no": 1,
+                "choice_no": 2,
+                "choice_key_status": "valid",
+                "crop_variant": "threshold3x",
+                "crop_path": str(crop_path),
+                "status": "ok",
+            }
+        ]
+    ).to_csv(processed / "p0_digit_crops_manifest.csv", index=False, encoding="utf-8-sig")
+
+    monkeypatch.setattr(digit_fallback, "_run_tesseract_digits", lambda *args, **kwargs: "2445")
+
+    suggestions = digit_fallback.build_digit_crop_suggestions(
+        _config(tmp_path),
+        tesseract_bin="/bin/tesseract",
+        psms=(7,),
+    )
+
+    assert suggestions.loc[0, "status"] == "ocr_blank_or_noisy"
+    assert suggestions.loc[0, "selected_votes"] == ""

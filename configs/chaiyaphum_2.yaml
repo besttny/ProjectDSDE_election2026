@@ -54,6 +54,9 @@ ocr:
 quality:
   target_accuracy: 0.99
   fuzzy_match_threshold: 0.86
+  max_vote_cell_value: 999
+  auto_digit_fallback_min_confidence: 0.75
+  auto_digit_fallback_max_votes: 999
 
 outputs:
   election_results: data/processed/election_results_long.csv
@@ -74,5 +77,6 @@ outputs:
   p0_fallback_targets: data/processed/p0_fallback_targets.csv
   p0_digit_crops_manifest: data/processed/p0_digit_crops_manifest.csv
   digit_crop_ocr_suggestions: data/processed/digit_crop_ocr_suggestions.csv
+  auto_digit_vote_cells: data/processed/auto_digit_vote_cells.csv
   invalid_text_review: data/processed/invalid_text_charset_review.csv
   invalid_text_missing_vote_targets: data/processed/invalid_text_missing_vote_targets.csv

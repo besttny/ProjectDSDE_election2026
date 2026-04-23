@@ -178,7 +178,8 @@ def test_apply_expected_5_18_partylist_rows_use_party_master(tmp_path: Path):
     (external / "master_parties.csv").write_text(
         "party_no,canonical_name\n"
         "1,พรรคหนึ่ง\n"
-        "2,พรรคสอง\n",
+        "11,พรรคสิบเอ็ด\n"
+        "35,พรรคสามสิบห้า\n",
         encoding="utf-8",
     )
 
@@ -222,8 +223,11 @@ def test_apply_expected_5_18_partylist_rows_use_party_master(tmp_path: Path):
 
     repaired = apply_expected_5_18_rows(df, _config(tmp_path))
 
-    assert repaired["choice_no"].tolist() == [1, 2]
+    assert repaired["choice_no"].tolist() == [1, 11, 35]
     assert repaired.loc[0, "party_name"] == "พรรคหนึ่ง"
     assert int(repaired.loc[0, "votes"]) == 12
-    assert repaired.loc[1, "party_name"] == "พรรคสอง"
+    assert repaired.loc[1, "party_name"] == "พรรคสิบเอ็ด"
     assert repaired.loc[1, "validation_status"] == "needs_review"
+    assert repaired.loc[0, "source_page"] == 1
+    assert repaired.loc[1, "source_page"] == 2
+    assert repaired.loc[2, "source_page"] == 3

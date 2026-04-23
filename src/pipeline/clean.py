@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.ocr.text_constraints import apply_thai_text_constraints
 from src.pipeline.config import ProjectConfig, load_config
+from src.pipeline.digit_vote_fallback import apply_raw_digit_vote_fallback
 from src.pipeline.expected_rows import apply_expected_5_18_rows
 from src.pipeline.reviewed_rows import apply_reviewed_rows, apply_reviewed_vote_cells
 from src.pipeline.schema import NUMERIC_COLUMNS, RESULT_COLUMNS
@@ -200,6 +201,28 @@ def apply_master_key_validation(df: pd.DataFrame, config: ProjectConfig) -> pd.D
     return validated
 
 
+def apply_vote_plausibility_constraints(df: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
+    if df.empty or "votes" not in df.columns:
+        return df
+
+    max_votes = int(
+        config.quality.get(
+            "max_vote_cell_value",
+            config.quality.get("auto_digit_fallback_max_votes", 999),
+        )
+    )
+    constrained = df.copy()
+    votes = pd.to_numeric(constrained["votes"], errors="coerce")
+    implausible = votes.notna() & (votes > max_votes)
+    if not implausible.any():
+        return constrained
+
+    constrained.loc[implausible, "votes"] = pd.NA
+    if "validation_status" in constrained.columns:
+        constrained.loc[implausible, "validation_status"] = "needs_review"
+    return constrained
+
+
 def _first_filled(series: pd.Series) -> object:
     for value in series:
         if pd.notna(value) and str(value).strip() != "":
@@ -323,12 +346,21 @@ def clean_results(config: ProjectConfig) -> tuple[Path, Path]:
     cleaned = apply_station_inference(cleaned, config)
     cleaned = apply_expected_5_18_rows(cleaned, config)
     cleaned = apply_master_names(cleaned, config)
+    cleaned, digit_fallback_audit = apply_raw_digit_vote_fallback(cleaned, config)
+    if "auto_digit_vote_cells" in config.outputs:
+        digit_fallback_audit.to_csv(
+            config.output("auto_digit_vote_cells"),
+            index=False,
+            encoding="utf-8-sig",
+        )
     if "reviewed_vote_cells_file" in config.paths:
         cleaned = apply_reviewed_vote_cells(cleaned, config.path("reviewed_vote_cells_file"))
     cleaned = normalize_results(cleaned)
+    cleaned = apply_vote_plausibility_constraints(cleaned, config)
     cleaned = deduplicate_result_rows(cleaned)
     cleaned = apply_master_key_validation(cleaned, config)
     cleaned = apply_thai_text_constraints(cleaned)
+    cleaned = apply_vote_plausibility_constraints(cleaned, config)
     cleaned = normalize_results(cleaned)
 
     results_path = config.output("election_results")
