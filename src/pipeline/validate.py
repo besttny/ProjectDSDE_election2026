@@ -343,6 +343,24 @@ def validate_dataframe(
                 f"{stations} / {expected_polling_stations} polling stations parsed",
             )
         )
+        if not form_df.empty and {"polling_station_no", "source_pdf", "source_page"}.issubset(form_df.columns):
+            source_ready = (
+                form_df["source_pdf"].notna()
+                & form_df["source_pdf"].astype(str).str.strip().ne("")
+                & form_df["source_page"].notna()
+                & form_df["source_page"].astype(str).str.strip().ne("")
+            )
+            stations_with_source = form_df.loc[source_ready, "polling_station_no"].dropna().nunique()
+        else:
+            stations_with_source = 0
+        report.append(
+            _row(
+                f"{form}_source_evidence_coverage",
+                "pass" if stations_with_source == expected_polling_stations else "fail",
+                "critical",
+                f"{stations_with_source} / {expected_polling_stations} polling stations have source PDF/page evidence",
+            )
+        )
 
     negative_votes = int((pd.to_numeric(df.get("votes", pd.Series(dtype=float)), errors="coerce") < 0).sum())
     report.append(
@@ -389,6 +407,42 @@ def validate_dataframe(
         totals_status = "warn"
         totals_detail = "Required columns unavailable for total comparison"
     report.append(_row("choice_votes_not_over_valid_votes", totals_status, "major", totals_detail))
+
+    choice_total_mismatches = 0
+    complete_choice_groups = 0
+    if not df.empty and {"form_type", "polling_station_no", "votes", "valid_votes"}.issubset(df.columns):
+        base = df.dropna(subset=["polling_station_no", "valid_votes"]).copy()
+        if not base.empty:
+            base["votes_numeric"] = pd.to_numeric(base["votes"], errors="coerce")
+            base["valid_votes_numeric"] = pd.to_numeric(base["valid_votes"], errors="coerce")
+            grouped = (
+                base.groupby(["form_type", "polling_station_no"], dropna=False)
+                .agg(
+                    total_votes=("votes_numeric", "sum"),
+                    valid_votes=("valid_votes_numeric", "max"),
+                    missing_votes=("votes_numeric", lambda values: int(values.isna().sum())),
+                )
+                .reset_index()
+            )
+            complete = grouped["missing_votes"].eq(0) & grouped["valid_votes"].notna()
+            complete_choice_groups = int(complete.sum())
+            choice_total_mismatches = int(
+                (complete & grouped["total_votes"].ne(grouped["valid_votes"])).sum()
+            )
+        match_status = (
+            "fail"
+            if choice_total_mismatches
+            else ("pass" if complete_choice_groups else "warn")
+        )
+        match_detail = (
+            f"{choice_total_mismatches} complete station/form groups have choice votes != valid_votes"
+            if complete_choice_groups
+            else "No complete station/form groups available for exact choice-total comparison"
+        )
+    else:
+        match_status = "warn"
+        match_detail = "Required columns unavailable for exact choice-total comparison"
+    report.append(_row("choice_votes_match_valid_votes", match_status, "major", match_detail))
 
     accounting_mismatches = 0
     accounting_available = 0

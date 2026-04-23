@@ -53,6 +53,40 @@ def test_validate_choice_key_scopes_constituency_candidates_by_province_and_zone
     )
 
 
+def test_validate_choice_key_avoids_unscoped_candidate_number_when_master_has_multiple_scopes(tmp_path: Path):
+    external = tmp_path / "data/external"
+    external.mkdir(parents=True)
+    (external / "master_candidates.csv").write_text(
+        "province,constituency_no,candidate_no,canonical_name,party_name\n"
+        "ชัยภูมิ,2,3,นาย ก,เพื่อไทย\n"
+        "ชัยภูมิ,3,3,นาย ข,เพื่อไทย\n",
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        root=tmp_path,
+        data={"paths": {"master_candidates_file": "data/external/master_candidates.csv"}},
+    )
+
+    assert validate_choice_key(config, form_type="5_18", choice_no=3) == "unknown"
+    assert validate_choice_key(config, form_type="5_18", choice_no=4) == "invalid"
+
+
+def test_validate_choice_key_allows_unscoped_candidate_number_for_single_scope_master(tmp_path: Path):
+    external = tmp_path / "data/external"
+    external.mkdir(parents=True)
+    (external / "master_candidates.csv").write_text(
+        "province,constituency_no,candidate_no,canonical_name,party_name\n"
+        "ชัยภูมิ,2,1,นาย ก,เพื่อไทย\n",
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        root=tmp_path,
+        data={"paths": {"master_candidates_file": "data/external/master_candidates.csv"}},
+    )
+
+    assert validate_choice_key(config, form_type="5_18", choice_no=1) == "valid"
+
+
 def test_validate_choice_key_uses_party_number_for_party_list(tmp_path: Path):
     external = tmp_path / "data/external"
     external.mkdir(parents=True)

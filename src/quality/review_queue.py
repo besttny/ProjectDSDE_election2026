@@ -39,6 +39,7 @@ REVIEW_COLUMNS = [
 
 REASON_ACTIONS = {
     "missing_votes": "Open source PDF page and type the vote value manually.",
+    "missing_source_page": "Locate the official PDF/page for this expected row before accepting it.",
     "missing_station_id": "Read station id from PDF header or station list.",
     "missing_choice_no": "Check table row number against candidate or party master list.",
     "negative_votes": "Recheck OCR/parsing because votes cannot be negative.",
@@ -46,6 +47,7 @@ REASON_ACTIONS = {
     "parser_marked_needs_review": "Resolve parser/OCR uncertainty and add manual correction if repeatable.",
     "duplicate_choice_row": "Keep one canonical row for this form/station/choice key.",
     "choice_votes_exceed_valid_votes": "Check all vote rows in this station/form group.",
+    "choice_votes_mismatch_valid_votes": "Recheck all vote cells because total choice votes must equal valid votes when every choice is filled.",
     "ballot_accounting_mismatch": "Verify total, invalid, and no-vote ballot fields from the summary box.",
     "master_data_unmatched": "Confirm spelling and add alias or correction in external master/correction files.",
     "invalid_text_charset": "Replace OCR text noise with official Thai master data or a manual correction.",
@@ -65,11 +67,13 @@ def _is_missing(series: pd.Series) -> pd.Series:
 def _priority(reason: str) -> str:
     if reason in {
         "missing_votes",
+        "missing_source_page",
         "missing_station_id",
         "missing_choice_no",
         "negative_votes",
         "duplicate_choice_row",
         "choice_votes_exceed_valid_votes",
+        "choice_votes_mismatch_valid_votes",
         "ballot_accounting_mismatch",
     }:
         return "P0"
@@ -133,6 +137,34 @@ def _exceeded_valid_vote_indexes(df: pd.DataFrame) -> list[int]:
     return [index for index, key in zip(base.index, keys, strict=False) if key in exceeded_keys]
 
 
+def _choice_total_mismatch_indexes(df: pd.DataFrame) -> list[int]:
+    required = {"form_type", "polling_station_no", "votes", "valid_votes"}
+    if df.empty or not required.issubset(df.columns):
+        return []
+    base = df.dropna(subset=["polling_station_no", "valid_votes"]).copy()
+    if base.empty:
+        return []
+
+    base["votes_numeric"] = pd.to_numeric(base["votes"], errors="coerce")
+    base["valid_votes_numeric"] = pd.to_numeric(base["valid_votes"], errors="coerce")
+    grouped = base.groupby(["form_type", "polling_station_no"], dropna=False).agg(
+        total_votes=("votes_numeric", "sum"),
+        valid_votes=("valid_votes_numeric", "max"),
+        missing_votes=("votes_numeric", lambda values: int(values.isna().sum())),
+    )
+    mismatch_keys = {
+        key
+        for key, row in grouped.iterrows()
+        if row["missing_votes"] == 0
+        and pd.notna(row["valid_votes"])
+        and row["total_votes"] != row["valid_votes"]
+    }
+    if not mismatch_keys:
+        return []
+    keys = list(zip(base["form_type"], base["polling_station_no"], strict=False))
+    return [index for index, key in zip(base.index, keys, strict=False) if key in mismatch_keys]
+
+
 def _ballot_accounting_mismatch_indexes(df: pd.DataFrame) -> list[int]:
     required = {"ballots_cast", "valid_votes", "invalid_votes", "no_vote"}
     if df.empty or not required.issubset(df.columns):
@@ -175,6 +207,10 @@ def build_review_queue(config: ProjectConfig) -> pd.DataFrame:
     reasons: list[tuple[str, list[int]]] = []
     reasons.append(("missing_votes", working.index[_is_missing(working["votes"])].tolist()))
     election_day = working["form_type"].astype(str).isin(["5_18", "5_18_partylist", "5_18_auto"])
+    missing_source = election_day & (
+        _is_missing(working["source_pdf"]) | _is_missing(working["source_page"])
+    )
+    reasons.append(("missing_source_page", working.index[missing_source].tolist()))
     missing_station = election_day & _is_missing(working["polling_station_no"])
     reasons.append(("missing_station_id", working.index[missing_station].tolist()))
     reasons.append(("missing_choice_no", working.index[_is_missing(working["choice_no"])].tolist()))
@@ -194,6 +230,7 @@ def build_review_queue(config: ProjectConfig) -> pd.DataFrame:
     )
     reasons.append(("duplicate_choice_row", _duplicate_indexes(working)))
     reasons.append(("choice_votes_exceed_valid_votes", _exceeded_valid_vote_indexes(working)))
+    reasons.append(("choice_votes_mismatch_valid_votes", _choice_total_mismatch_indexes(working)))
     reasons.append(("ballot_accounting_mismatch", _ballot_accounting_mismatch_indexes(working)))
     reasons.append(("master_data_unmatched", _master_unmatched_indexes(config)))
     reasons.append(("invalid_text_charset", working.index[invalid_thai_text_mask(working)].tolist()))

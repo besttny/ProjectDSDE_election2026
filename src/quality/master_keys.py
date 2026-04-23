@@ -106,12 +106,22 @@ def validate_choice_key(
         keys = candidate_master_keys(config)
         if not keys:
             return "unknown"
-        key = candidate_key_for_values(
-            config,
-            province=province,
-            constituency_no=constituency_no,
-            choice_no=choice_key,
-        )
+        province_key = normalize_text_key(province) or normalize_text_key(config.province)
+        constituency_key = normalize_number_key(constituency_no) or normalize_number_key(config.constituency_no)
+        if not province_key or not constituency_key:
+            matching_scopes = {
+                (master_province, master_constituency)
+                for master_province, master_constituency, master_choice in keys
+                if master_choice == choice_key
+            }
+            if not matching_scopes:
+                return "invalid"
+            all_scopes = {
+                (master_province, master_constituency)
+                for master_province, master_constituency, _ in keys
+            }
+            return "valid" if len(all_scopes) == 1 else "unknown"
+        key = (province_key, constituency_key, choice_key)
         return "valid" if key in keys else "invalid"
 
     if form in PARTYLIST_FORMS:

@@ -85,7 +85,7 @@ def _manifest_source_paths(config: ProjectConfig) -> dict[str, str]:
 def _station_pages(config: ProjectConfig, *, form_type: str) -> pd.DataFrame:
     page_map = build_station_page_map(config)
     if not page_map:
-        return pd.DataFrame()
+        return _complete_station_pages(pd.DataFrame(), config, form_type=form_type)
 
     source_paths = _manifest_source_paths(config)
     records: list[dict[str, object]] = []
@@ -104,7 +104,7 @@ def _station_pages(config: ProjectConfig, *, form_type: str) -> pd.DataFrame:
             }
         )
     if not records:
-        return pd.DataFrame()
+        return _complete_station_pages(pd.DataFrame(), config, form_type=form_type)
 
     pages = pd.DataFrame(records)
     table_pages = (
@@ -112,7 +112,72 @@ def _station_pages(config: ProjectConfig, *, form_type: str) -> pd.DataFrame:
         .groupby(["polling_station_no", "source_name"], dropna=False, as_index=False)
         .first()
     )
-    return table_pages.sort_values(["polling_station_no", "source_page"], kind="stable")
+    table_pages = table_pages.sort_values(["polling_station_no", "source_page"], kind="stable")
+    return _complete_station_pages(table_pages, config, form_type=form_type)
+
+
+def _complete_station_pages(
+    stations: pd.DataFrame,
+    config: ProjectConfig,
+    *,
+    form_type: str,
+) -> pd.DataFrame:
+    """Ensure every expected election-day station has scaffold rows.
+
+    Missing OCR/page mappings should not silently delete a station from the
+    final dataset. Rows without source evidence stay marked ``needs_review`` and
+    are surfaced in the review queue through missing vote/source checks.
+    """
+
+    expected_count = int(config.expected_polling_stations or 0)
+    columns = [
+        "form_type",
+        "source_name",
+        "source_pdf",
+        "source_page",
+        "polling_station_no",
+        "district",
+        "subdistrict",
+    ]
+    if expected_count <= 0:
+        return stations if not stations.empty else pd.DataFrame(columns=columns)
+
+    if stations.empty:
+        working = pd.DataFrame(columns=columns)
+        present: set[int] = set()
+    else:
+        working = stations.copy()
+        for column in columns:
+            if column not in working.columns:
+                working[column] = ""
+        present = set(
+            pd.to_numeric(working["polling_station_no"], errors="coerce")
+            .dropna()
+            .astype(int)
+            .tolist()
+        )
+
+    missing_records = [
+        {
+            "form_type": form_type,
+            "source_name": "",
+            "source_pdf": "",
+            "source_page": "",
+            "polling_station_no": station_no,
+            "district": "",
+            "subdistrict": "",
+        }
+        for station_no in range(1, expected_count + 1)
+        if station_no not in present
+    ]
+    if missing_records:
+        working = pd.concat(
+            [working[columns], pd.DataFrame(missing_records, columns=columns)],
+            ignore_index=True,
+        )
+    if working.empty:
+        return working[columns]
+    return working[columns].sort_values(["polling_station_no", "source_name", "source_page"], kind="stable")
 
 
 def _best_numeric(series: pd.Series) -> object:
@@ -277,7 +342,9 @@ def _replace_form_rows(
     expected: pd.DataFrame,
 ) -> pd.DataFrame:
     source_names = _source_name_series(df["source_pdf"])
-    station_source_names = set(stations["source_name"].astype(str))
+    station_source_names = {
+        value for value in stations["source_name"].astype(str) if value.strip()
+    }
     covered = df["form_type"].astype(str).eq(form_type) & source_names.isin(station_source_names)
     kept = df[~covered].copy()
     return pd.concat([kept, expected], ignore_index=True)[RESULT_COLUMNS]

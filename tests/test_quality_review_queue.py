@@ -56,3 +56,31 @@ def test_build_review_queue_flags_rows_that_block_high_accuracy(tmp_path: Path):
 
     assert {"missing_votes", "low_ocr_confidence", "parser_marked_needs_review"}.issubset(reasons)
     assert queue.iloc[0]["priority"] == "P0"
+
+
+def test_build_review_queue_flags_expected_rows_without_source_evidence(tmp_path: Path):
+    config = _config(tmp_path)
+    results_path = tmp_path / "data/processed/election_results_long.csv"
+    results_path.parent.mkdir(parents=True)
+    results_path.write_text(
+        "province,constituency_no,form_type,vote_type,polling_station_no,district,subdistrict,"
+        "choice_no,choice_name,party_name,votes,eligible_voters,ballots_cast,valid_votes,"
+        "invalid_votes,no_vote,source_pdf,source_page,ocr_engine,ocr_confidence,validation_status\n"
+        "ชัยภูมิ,2,5_18,constituency,339,,,1,นาย ก,พรรค ก,,"
+        ",,,,,,,master_expected_5_18,,needs_review\n",
+        encoding="utf-8",
+    )
+    external = tmp_path / "data/external"
+    external.mkdir(parents=True)
+    (external / "master_parties.csv").write_text("party_no,canonical_name,aliases\n", encoding="utf-8")
+    (external / "master_candidates.csv").write_text(
+        "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases\n",
+        encoding="utf-8",
+    )
+    (external / "master_polling_stations.csv").write_text("station_id,station_name,district,subdistrict,aliases\n", encoding="utf-8")
+
+    queue = build_review_queue(config)
+    missing_source = queue[queue["reason"].eq("missing_source_page")]
+
+    assert not missing_source.empty
+    assert set(missing_source["priority"]) == {"P0"}

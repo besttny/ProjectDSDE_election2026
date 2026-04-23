@@ -8,11 +8,15 @@ from src.pipeline.expected_rows import apply_expected_5_18_rows
 from src.pipeline.schema import RESULT_COLUMNS
 
 
-def _config(root: Path) -> ProjectConfig:
+def _config(root: Path, expected_polling_stations: int = 0) -> ProjectConfig:
     return ProjectConfig(
         root=root,
         data={
-            "project": {"province": "ชัยภูมิ", "constituency_no": 2},
+            "project": {
+                "province": "ชัยภูมิ",
+                "constituency_no": 2,
+                "expected_polling_stations": expected_polling_stations,
+            },
             "paths": {
                 "manifest": "configs/manifest.csv",
                 "raw_ocr_dir": "data/raw/ocr",
@@ -44,6 +48,25 @@ def _write_fixed_5_18_inputs(root: Path) -> None:
         "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases\n"
         "ชัยภูมิ,2,518,1,นาย ก,พรรค ก,\n"
         "ชัยภูมิ,2,518,2,นาง ข,พรรค ข,\n",
+        encoding="utf-8",
+    )
+
+
+def _write_missing_station_inputs(root: Path) -> None:
+    (root / "configs").mkdir(parents=True)
+    (root / "configs/manifest.csv").write_text(
+        "form_type,vote_type,required,expected_polling_stations,file_path,source_url,notes\n"
+        "5_18,constituency,true,2,data/raw/pdfs/sample.pdf,,\n",
+        encoding="utf-8",
+    )
+    (root / "data/raw/pdfs").mkdir(parents=True)
+    (root / "data/raw/pdfs/sample.pdf").write_bytes(b"%PDF-1.4\n")
+
+    external = root / "data/external"
+    external.mkdir(parents=True)
+    (external / "master_candidates.csv").write_text(
+        "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases\n"
+        "ชัยภูมิ,2,518,1,นาย ก,พรรค ก,\n",
         encoding="utf-8",
     )
 
@@ -100,6 +123,36 @@ def test_apply_expected_5_18_candidate_rows_replaces_invalid_ocr_choice(tmp_path
     assert repaired.loc[0, "validation_status"] == "ok"
     assert repaired.loc[1, "choice_name"] == "นาง ข"
     assert repaired.loc[1, "validation_status"] == "needs_review"
+
+
+def test_apply_expected_5_18_candidate_rows_scaffolds_missing_expected_stations(tmp_path: Path):
+    _write_missing_station_inputs(tmp_path)
+    unrelated = {column: "" for column in RESULT_COLUMNS}
+    unrelated.update(
+        {
+            "province": "ชัยภูมิ",
+            "constituency_no": 2,
+            "form_type": "5_16",
+            "vote_type": "constituency",
+            "choice_no": 1,
+            "choice_name": "นาย ก",
+            "party_name": "พรรค ก",
+            "votes": 10,
+            "validation_status": "ok",
+        }
+    )
+
+    repaired = apply_expected_5_18_rows(
+        pd.DataFrame([unrelated], columns=RESULT_COLUMNS),
+        _config(tmp_path, expected_polling_stations=2),
+    )
+    expected_rows = repaired[repaired["form_type"].astype(str).eq("5_18")]
+
+    assert expected_rows["polling_station_no"].tolist() == [1, 2]
+    assert expected_rows["choice_no"].tolist() == [1, 1]
+    assert expected_rows["source_pdf"].fillna("").tolist() == ["", ""]
+    assert expected_rows["source_page"].fillna("").tolist() == ["", ""]
+    assert expected_rows["validation_status"].tolist() == ["needs_review", "needs_review"]
 
 
 def test_apply_expected_5_18_partylist_rows_use_party_master(tmp_path: Path):

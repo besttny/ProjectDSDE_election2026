@@ -20,9 +20,18 @@ TARGET_COLUMNS = [
     "suggested_fallback",
 ]
 
-SUMMARY_REASONS = {"ballot_accounting_mismatch", "choice_votes_exceed_valid_votes"}
-METADATA_REASONS = {"missing_station_id"}
-TABLE_REASONS = {"missing_votes", "missing_choice_no", "duplicate_choice_row"}
+SUMMARY_REASONS = {
+    "ballot_accounting_mismatch",
+    "choice_votes_exceed_valid_votes",
+    "choice_votes_mismatch_valid_votes",
+}
+METADATA_REASONS = {"missing_station_id", "missing_source_page"}
+TABLE_REASONS = {
+    "missing_votes",
+    "missing_choice_no",
+    "duplicate_choice_row",
+    "choice_votes_mismatch_valid_votes",
+}
 
 
 def _read_review_queue(config: ProjectConfig) -> pd.DataFrame:
