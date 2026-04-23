@@ -25,11 +25,10 @@ paths:
 
 ocr:
   primary_engine: paddleocr
-  fallback_engine: easyocr
+  fallback_engine: ""
   languages:
     - th
-    - en
-  dpi: 300
+  dpi: 350
   image_format: png
   confidence_threshold: 0.65
   fallback_confidence_threshold: 0.45
@@ -49,7 +48,65 @@ ocr:
     use_doc_orientation_classify: false
     use_doc_unwarping: false
     use_textline_orientation: false
-    text_det_limit_side_len: 1920
+    text_det_limit_side_len: 2240
+  preprocessing:
+    enabled: true
+    profiles:
+      thai_text:
+        mode: thai_text
+        grayscale: true
+        autocontrast: true
+        sharpen: true
+        sharpen_percent: 140
+        upscale: 1.25
+      table_text:
+        mode: table_text
+        grayscale: true
+        autocontrast: true
+        sharpen: true
+        sharpen_percent: 180
+        upscale: 1.5
+  profiles:
+    default:
+      languages:
+        - th
+      primary_engine: paddleocr
+      fallback_engine: ""
+      preprocess: raw
+      line_filter: off
+    zones:
+      metadata:
+        preprocess: thai_text
+        line_filter: thai_numeric
+        confidence_threshold: 0.50
+        paddle:
+          text_rec_score_thresh: 0.25
+      summary:
+        preprocess: thai_text
+        line_filter: thai_numeric
+        confidence_threshold: 0.50
+        paddle:
+          text_rec_score_thresh: 0.25
+      table:
+        preprocess: table_text
+        line_filter: thai_numeric
+        confidence_threshold: 0.45
+        paddle:
+          text_det_limit_side_len: 2240
+          text_rec_score_thresh: 0.20
+    forms:
+      5_18_partylist:
+        zones:
+          table:
+            preprocess: table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.40
+      5_18_auto:
+        zones:
+          table:
+            preprocess: table_text
+            line_filter: thai_numeric
+            confidence_threshold: 0.40
 
 quality:
   target_accuracy: 0.99

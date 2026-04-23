@@ -125,8 +125,9 @@ batch OCR so Colab can resume after runtime resets without starting over.
    OCR run. The older `02_ocr_extraction_colab.ipynb` is kept for manual
    batch experiments.
 2. Mount Google Drive and place the prepared PDF zip or extracted PDF folder in Drive.
-3. Use the notebook install cell. It installs PaddleOCR only and disables
-   EasyOCR fallback on Colab to avoid CUDA package conflicts.
+3. Use the notebook install cell. It installs PaddleOCR only; the default
+   config now keeps OCR Thai-only and disables EasyOCR fallback to avoid CUDA
+   package conflicts on Colab.
 4. Run `python -m src.pipeline.ocr_progress --config configs/chaiyaphum_2.yaml`
    and choose a small manifest range, for example rows `5-8`.
 5. Run OCR with `--start-index` and `--end-index`.
@@ -134,15 +135,34 @@ batch OCR so Colab can resume after runtime resets without starting over.
 7. Copy those folders back into this repo locally, then run
    `python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr`.
 
-The default OCR config is tuned for Colab A100 accuracy: `dpi: 300`, PaddleOCR
-Thai recognition, `device=gpu:0`, `text_det_limit_side_len: 1920`, and
-automatic zone OCR. If Colab
-runs out of memory, reduce the batch range first before lowering DPI.
+The default OCR config is tuned for Colab Pro accuracy: `dpi: 350`, PaddleOCR
+Thai recognition only, `device=gpu:0`, `text_det_limit_side_len: 2240`, and
+automatic zone OCR. Metadata/summary/table zones use separate OCR profiles:
+metadata and summary are preprocessed for Thai text, table zones are sharpened
+and upscaled, and zone OCR drops Latin-only noise because official forms should
+contain Thai text plus numeric fields. Raw OCR JSON includes an OCR-mode
+signature, so selected OCR reruns will refresh old raw JSON when DPI,
+preprocessing, language, zone, or Paddle settings change.
+If Colab runs out of memory, reduce the batch range first before lowering DPI.
 For the A100 accuracy-first full Colab run, use `02_ocr_full_run_colab.ipynb`
-with local scratch enabled. Its `accuracy` profile uses DPI `300`,
-`device=gpu:0`, `precision=fp32`, and full `metadata + summary + table` zone
-OCR, then builds reports once at the end. HPI is disabled by default because
-PaddleOCR requires the optional `ultra-infer` package for that engine.
+with local scratch enabled. Its `accuracy` profile uses `device=gpu:0`,
+`precision=fp32`, and full `metadata + summary + table` zone OCR, then builds
+reports once at the end. HPI is disabled by default because PaddleOCR requires
+the optional `ultra-infer` package for that engine.
+
+Recommended OCR refresh flow after changing upstream OCR settings:
+
+```bash
+# 1) A/B test a small high-risk subset first.
+python -m src.ocr.extract --config configs/chaiyaphum_2.yaml \
+  --file-contains "ต.กุดน้ำใส" --overwrite
+python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
+
+# 2) If validation/review metrics improve, run Colab in manifest batches.
+python -m src.ocr.extract --config configs/chaiyaphum_2.yaml \
+  --start-index 5 --end-index 8 --overwrite
+python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
+```
 
 Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
 and time. The local machine only needs the parsed/raw OCR artifacts to rebuild

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Sequence
@@ -15,7 +16,9 @@ from src.ocr.engines import (
     build_engine,
     run_ocr_with_fallback,
 )
+from src.ocr.language_filter import filter_ocr_lines_by_language
 from src.ocr.parser import parse_ocr_json, rows_to_dataframe
+from src.ocr.preprocess import OCRImage, preprocess_image_for_ocr, rescale_ocr_lines
 from src.ocr.render import render_pdf_pages
 from src.ocr.zones import (
     crop_zone_image,
@@ -47,6 +50,7 @@ def _write_raw_ocr(
     page_width: int | None = None,
     page_height: int | None = None,
     zones: list[dict[str, Any]] | None = None,
+    ocr_mode_signature: str = "",
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     confidence = (
@@ -61,6 +65,7 @@ def _write_raw_ocr(
         "ocr_confidence": round(confidence, 4),
         "page_width": page_width,
         "page_height": page_height,
+        "ocr_mode_signature": ocr_mode_signature,
         "zones": zones or [],
         "lines": lines,
     }
@@ -90,6 +95,221 @@ def _engine_options(config: ProjectConfig, engine_name: str) -> dict[str, Any]:
     return dict(config.ocr.get(normalized, config.ocr.get(aliases.get(normalized, ""), {})))
 
 
+def _deep_merge(base: dict[str, Any], override: dict[str, Any] | None) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _list_value(value: object, default: list[str]) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [part.strip() for part in value.split(",") if part.strip()]
+    return default
+
+
+def _scope_ocr_profile(
+    config: ProjectConfig,
+    *,
+    form_type: str,
+    zone_name: str,
+) -> dict[str, Any]:
+    profile: dict[str, Any] = {
+        "primary_engine": str(config.ocr.get("primary_engine", "paddleocr")),
+        "fallback_engine": str(config.ocr.get("fallback_engine", "") or ""),
+        "languages": list(config.ocr.get("languages", ["th"])),
+        "confidence_threshold": float(
+            config.ocr.get(
+                "fallback_confidence_threshold",
+                config.ocr.get("confidence_threshold", 0.65),
+            )
+        ),
+        "preprocess": "raw",
+        "line_filter": "off",
+    }
+    profiles = config.ocr.get("profiles", {})
+    if not isinstance(profiles, dict):
+        return profile
+
+    profile = _deep_merge(profile, profiles.get("default", {}))
+    zone_profiles = profiles.get("zones", {})
+    if isinstance(zone_profiles, dict):
+        profile = _deep_merge(profile, zone_profiles.get(zone_name, {}))
+
+    form_profiles = profiles.get("forms", {})
+    if isinstance(form_profiles, dict):
+        form_profile = form_profiles.get(form_type, {})
+        if isinstance(form_profile, dict):
+            profile = _deep_merge(profile, form_profile.get("default", {}))
+            form_zone_profiles = form_profile.get("zones", {})
+            if isinstance(form_zone_profiles, dict):
+                profile = _deep_merge(profile, form_zone_profiles.get(zone_name, {}))
+    profile["languages"] = _list_value(profile.get("languages"), ["th"])
+    return profile
+
+
+def _preprocess_profile_options(config: ProjectConfig, profile_name: str) -> dict[str, Any]:
+    preprocessing = config.ocr.get("preprocessing", {})
+    if not isinstance(preprocessing, dict) or not preprocessing.get("enabled", False):
+        return {"mode": "raw"}
+    if profile_name in {"", "raw", "none"}:
+        return {"mode": "raw"}
+    profiles = preprocessing.get("profiles", {})
+    if isinstance(profiles, dict) and isinstance(profiles.get(profile_name), dict):
+        return dict(profiles[profile_name])
+    return {"mode": profile_name}
+
+
+def _profile_engine_options(
+    config: ProjectConfig,
+    *,
+    engine_name: str,
+    profile: dict[str, Any],
+) -> dict[str, Any]:
+    options = _engine_options(config, engine_name)
+    normalized = engine_name.strip().lower()
+    aliases = {"paddleocr": "paddle", "easyocr": "easyocr"}
+    for key in [normalized, aliases.get(normalized, "")]:
+        value = profile.get(key)
+        if isinstance(value, dict):
+            options = _deep_merge(options, value)
+    return options
+
+
+def _engine_cache_key(
+    *,
+    engine_name: str,
+    languages: list[str],
+    options: dict[str, Any],
+    lazy: bool,
+) -> str:
+    return json.dumps(
+        {
+            "engine": engine_name,
+            "languages": languages,
+            "options": options,
+            "lazy": lazy,
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+
+def _engine_from_cache(
+    cache: dict[str, OCREngine],
+    *,
+    engine_name: str,
+    languages: list[str],
+    options: dict[str, Any],
+    lazy: bool = False,
+) -> OCREngine:
+    key = _engine_cache_key(
+        engine_name=engine_name,
+        languages=languages,
+        options=options,
+        lazy=lazy,
+    )
+    if key not in cache:
+        cache[key] = (
+            LazyOCREngine(engine_name, languages, options)
+            if lazy
+            else build_engine(engine_name, languages, options)
+        )
+    return cache[key]
+
+
+def _run_profiled_ocr(
+    image_path: Path,
+    *,
+    config: ProjectConfig,
+    profile: dict[str, Any],
+    engine_cache: dict[str, OCREngine],
+) -> tuple[str, list[dict[str, Any]]]:
+    languages = _list_value(profile.get("languages"), ["th"])
+    primary_name = str(profile.get("primary_engine") or config.ocr.get("primary_engine", "paddleocr"))
+    fallback_name = str(profile.get("fallback_engine") or "").strip()
+    primary_options = _profile_engine_options(config, engine_name=primary_name, profile=profile)
+    fallback_options = (
+        _profile_engine_options(config, engine_name=fallback_name, profile=profile)
+        if fallback_name
+        else {}
+    )
+    primary = _engine_from_cache(
+        engine_cache,
+        engine_name=primary_name,
+        languages=languages,
+        options=primary_options,
+    )
+    fallback = (
+        _engine_from_cache(
+            engine_cache,
+            engine_name=fallback_name,
+            languages=languages,
+            options=fallback_options,
+            lazy=True,
+        )
+        if fallback_name
+        else None
+    )
+    return run_ocr_with_fallback(
+        image_path,
+        primary_engine=primary,
+        fallback_engine=fallback,
+        confidence_threshold=float(profile.get("confidence_threshold", 0.65)),
+    )
+
+
+def _prepare_ocr_input(
+    image_path: Path,
+    *,
+    config: ProjectConfig,
+    output_dir: Path,
+    profile: dict[str, Any],
+) -> OCRImage:
+    profile_name = str(profile.get("preprocess", "raw")).strip() or "raw"
+    return preprocess_image_for_ocr(
+        image_path,
+        output_dir=output_dir,
+        profile_name=profile_name,
+        options=_preprocess_profile_options(config, profile_name),
+    )
+
+
+def _filter_lines_for_profile(
+    lines: list[dict[str, Any]],
+    *,
+    profile: dict[str, Any],
+) -> tuple[list[dict[str, Any]], int]:
+    return filter_ocr_lines_by_language(
+        lines,
+        mode=str(profile.get("line_filter", "off")),
+    )
+
+
+def _ocr_mode_signature(config: ProjectConfig) -> str:
+    relevant = {
+        "dpi": config.ocr.get("dpi"),
+        "image_format": config.ocr.get("image_format"),
+        "primary_engine": config.ocr.get("primary_engine"),
+        "fallback_engine": config.ocr.get("fallback_engine"),
+        "languages": config.ocr.get("languages"),
+        "confidence_threshold": config.ocr.get("confidence_threshold"),
+        "fallback_confidence_threshold": config.ocr.get("fallback_confidence_threshold"),
+        "zone_ocr": config.ocr.get("zone_ocr"),
+        "preprocessing": config.ocr.get("preprocessing"),
+        "profiles": config.ocr.get("profiles"),
+        "paddle": config.ocr.get("paddle"),
+        "easyocr": config.ocr.get("easyocr"),
+    }
+    payload = json.dumps(relevant, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
 def _normalize_form_filters(form_types: Sequence[str] | None) -> set[str]:
     normalized: set[str] = set()
     for value in form_types or []:
@@ -106,17 +326,24 @@ def _zone_ocr_enabled(config: ProjectConfig) -> bool:
     return bool(_zone_ocr_options(config).get("enabled", False))
 
 
-def _raw_json_supports_current_mode(raw_path: Path, *, zone_ocr_enabled: bool) -> bool:
+def _raw_json_supports_current_mode(
+    raw_path: Path,
+    *,
+    zone_ocr_enabled: bool,
+    ocr_mode_signature: str,
+) -> bool:
     if not raw_path.exists():
         return False
-    if not zone_ocr_enabled:
-        return True
     try:
         with raw_path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
     except json.JSONDecodeError:
         return False
-    return bool(payload.get("zones"))
+    if payload.get("ocr_mode_signature") != ocr_mode_signature:
+        return False
+    if zone_ocr_enabled and not payload.get("zones"):
+        return False
+    return True
 
 
 def _ocr_page(
@@ -124,17 +351,28 @@ def _ocr_page(
     image_path: Path,
     entry: ManifestEntry,
     config: ProjectConfig,
-    primary_engine: OCREngine,
-    fallback_engine: OCREngine | None,
-    confidence_threshold: float,
+    engine_cache: dict[str, OCREngine],
 ) -> tuple[str, list[dict[str, Any]], int, int, list[dict[str, Any]]]:
     page_width, page_height = image_size(image_path)
-    full_engine_name, full_lines = run_ocr_with_fallback(
-        image_path,
-        primary_engine=primary_engine,
-        fallback_engine=fallback_engine,
-        confidence_threshold=confidence_threshold,
+    full_profile = _scope_ocr_profile(
+        config,
+        form_type=entry.form_type,
+        zone_name="full_page",
     )
+    full_ocr_input = _prepare_ocr_input(
+        image_path,
+        config=config,
+        output_dir=image_path.parent / "ocr_inputs",
+        profile=full_profile,
+    )
+    full_engine_name, full_lines = _run_profiled_ocr(
+        full_ocr_input.path,
+        config=config,
+        profile=full_profile,
+        engine_cache=engine_cache,
+    )
+    full_lines = rescale_ocr_lines(full_lines, full_ocr_input)
+    full_lines, full_dropped = _filter_lines_for_profile(full_lines, profile=full_profile)
 
     zone_options = _zone_ocr_options(config)
     if not bool(zone_options.get("enabled", False)):
@@ -152,15 +390,44 @@ def _ocr_page(
     )
     merged_lines = tag_full_page_lines(full_lines, ocr_engine=full_engine_name)
     zone_metadata: list[dict[str, Any]] = []
+    if full_ocr_input.profile != "raw" or full_dropped:
+        zone_metadata.append(
+            {
+                "name": "full_page",
+                "source": "rendered_page",
+                "crop_box": [0, 0, page_width, page_height],
+                "image_path": str(image_path),
+                "ocr_image_path": str(full_ocr_input.path),
+                "preprocess": full_ocr_input.profile,
+                "line_filter": str(full_profile.get("line_filter", "off")),
+                "dropped_line_count": full_dropped,
+                "ocr_engine": full_engine_name,
+                "ocr_confidence": round(average_confidence(full_lines), 4),
+                "line_count": len(full_lines),
+            }
+        )
 
     for zone in zones:
         crop_path = crop_zone_image(image_path, zone, images_zone_dir)
-        zone_engine_name, zone_lines = run_ocr_with_fallback(
-            crop_path,
-            primary_engine=primary_engine,
-            fallback_engine=fallback_engine,
-            confidence_threshold=confidence_threshold,
+        zone_profile = _scope_ocr_profile(
+            config,
+            form_type=entry.form_type,
+            zone_name=zone.name,
         )
+        zone_ocr_input = _prepare_ocr_input(
+            crop_path,
+            config=config,
+            output_dir=images_zone_dir / "ocr_inputs",
+            profile=zone_profile,
+        )
+        zone_engine_name, zone_lines = _run_profiled_ocr(
+            zone_ocr_input.path,
+            config=config,
+            profile=zone_profile,
+            engine_cache=engine_cache,
+        )
+        zone_lines = rescale_ocr_lines(zone_lines, zone_ocr_input)
+        zone_lines, dropped_lines = _filter_lines_for_profile(zone_lines, profile=zone_profile)
         shifted_lines = shift_lines_to_page(
             zone_lines,
             zone=zone,
@@ -173,6 +440,10 @@ def _ocr_page(
                 "source": zone.source,
                 "crop_box": list(zone.crop_box),
                 "image_path": str(crop_path),
+                "ocr_image_path": str(zone_ocr_input.path),
+                "preprocess": zone_ocr_input.profile,
+                "line_filter": str(zone_profile.get("line_filter", "off")),
+                "dropped_line_count": dropped_lines,
                 "ocr_engine": zone_engine_name,
                 "ocr_confidence": round(average_confidence(zone_lines), 4),
                 "line_count": len(zone_lines),
@@ -242,16 +513,10 @@ def process_manifest_entry(
         limit_pages=limit_pages,
     )
 
-    languages = list(config.ocr.get("languages", ["th", "en"]))
     threshold = float(config.ocr.get("confidence_threshold", 0.65))
-    fallback_threshold = float(config.ocr.get("fallback_confidence_threshold", threshold))
-    primary_name = str(config.ocr.get("primary_engine", "paddleocr"))
-    primary_options = _engine_options(config, primary_name)
-    fallback_name = str(config.ocr.get("fallback_engine", "")).strip()
-    fallback_options = _engine_options(config, fallback_name) if fallback_name else {}
-    primary: OCREngine | None = None
-    fallback: OCREngine | None = None
+    engine_cache: dict[str, OCREngine] = {}
     zone_ocr_enabled = _zone_ocr_enabled(config)
+    mode_signature = _ocr_mode_signature(config)
 
     rows: list[dict[str, Any]] = []
     for image_path in images:
@@ -259,20 +524,16 @@ def process_manifest_entry(
         if (
             not skip_existing
             or not _raw_json_supports_current_mode(
-                raw_path, zone_ocr_enabled=zone_ocr_enabled
+                raw_path,
+                zone_ocr_enabled=zone_ocr_enabled,
+                ocr_mode_signature=mode_signature,
             )
         ):
-            if primary is None:
-                primary = build_engine(primary_name, languages, primary_options)
-            if fallback_name and fallback is None:
-                fallback = LazyOCREngine(fallback_name, languages, fallback_options)
             engine_name, lines, page_width, page_height, zones = _ocr_page(
                 image_path=image_path,
                 entry=entry,
                 config=config,
-                primary_engine=primary,
-                fallback_engine=fallback,
-                confidence_threshold=fallback_threshold,
+                engine_cache=engine_cache,
             )
             _write_raw_ocr(
                 output_path=raw_path,
@@ -283,6 +544,7 @@ def process_manifest_entry(
                 page_width=page_width,
                 page_height=page_height,
                 zones=zones,
+                ocr_mode_signature=mode_signature,
             )
         rows.extend(
             parse_ocr_json(
