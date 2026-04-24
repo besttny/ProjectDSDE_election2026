@@ -1,0 +1,75 @@
+ballot_type,field,choice_no,expected_value,source_form,source_url,notes
+constituency,eligible_voters,,133562,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,ballots_cast,,87136,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,valid_votes,,79316,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,invalid_votes,,4464,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,no_vote,,3356,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,1,1254,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,2,14648,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,3,54996,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,4,1314,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,5,3538,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,6,1879,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+constituency,votes,8,1687,ส.ส. 6/1,https://drive.google.com/file/d/1wDmWd3fSbSXlPvalTgH_of6TOKkUdJk9/view,Official ECT QR Google Drive Chaiyaphum constituency 2 aggregate reference only
+party_list,eligible_voters,,133561,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,ballots_cast,,87136,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,valid_votes,,79374,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,invalid_votes,,4999,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,no_vote,,2763,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,1,592,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,2,3046,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,3,3813,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,4,371,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,5,883,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,6,1659,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,7,150,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,8,646,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,9,25099,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,10,455,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,11,4338,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,12,613,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,13,752,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,14,59,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,15,97,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,16,335,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,17,131,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,18,38,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,19,56,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,20,78,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,21,57,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,22,50,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,23,55,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,24,82,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,25,29,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,26,104,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,27,3597,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,28,179,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,29,339,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,30,145,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,31,268,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,32,364,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,33,157,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,34,140,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,35,135,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,36,134,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,37,7952,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,38,404,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,39,46,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,40,70,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,41,34,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,42,230,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,43,228,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,44,63,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,45,129,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,46,20039,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,47,189,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,48,456,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,49,203,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,50,9,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,51,55,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,52,45,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,53,15,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,54,28,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,55,23,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,56,34,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only
+party_list,votes,57,76,ส.ส. 6/1 (บช.),https://drive.google.com/file/d/1B2BqUkGnl5jJdaO-QKXtR6KTl7Sukr08/view,Official ECT QR Google Drive Chaiyaphum constituency 2 party-list aggregate reference only

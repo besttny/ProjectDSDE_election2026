@@ -123,6 +123,11 @@ The row-level data must still come from OCR/source-page review of the official
 them only to validate aggregate sums and flag discrepancies; do not use them to
 overwrite OCR rows automatically.
 
+Optional `6/1` references should be saved as
+`data/external/aggregate_validation_reference.csv`; `run_all --skip-ocr` writes
+`data/processed/aggregate_validation_report.csv` and flags discrepancies
+without changing OCR-derived rows.
+
 ## 6. Export Colab Artifacts
 
 Zip these folders after every batch:

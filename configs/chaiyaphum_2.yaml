@@ -19,6 +19,7 @@ paths:
   reviewed_rows_file: data/external/reviewed_rows.csv
   reviewed_vote_cells_file: data/external/reviewed_vote_cells.csv
   ground_truth_file: data/external/ground_truth_sample.csv
+  aggregate_validation_reference_file: data/external/aggregate_validation_reference.csv
   master_parties_file: data/external/master_parties.csv
   master_candidates_file: data/external/master_candidates.csv
   master_stations_file: data/external/master_polling_stations.csv
@@ -268,6 +269,8 @@ outputs:
   accuracy_report_md: outputs/reports/accuracy_report.md
   error_analysis_report: data/processed/error_analysis_report.csv
   error_analysis_report_md: outputs/reports/error_analysis_report.md
+  aggregate_validation_report: data/processed/aggregate_validation_report.csv
+  aggregate_validation_report_md: outputs/reports/aggregate_validation_report.md
   master_match_report: data/processed/master_match_report.csv
   insights_report: outputs/reports/insights_report.md
   p0_fallback_targets: data/processed/p0_fallback_targets.csv

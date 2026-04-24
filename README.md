@@ -215,6 +215,30 @@ or manually reviewed values automatically. When an aggregate total does not
 match, inspect the original `5/16`-`5/18` PDF page, crop, raw OCR JSON, and
 review queue target for the differing field.
 
+The current Chaiyaphum constituency 2 aggregate reference is already recorded in
+`data/external/aggregate_validation_reference.csv`. See
+`docs/reference_data_audit.md` for the current reference-data completeness
+status. If adding another official `6/1` aggregate reference later, use this
+schema:
+
+```csv
+ballot_type,field,choice_no,expected_value,source_form,source_url,notes
+constituency,votes,1,12345,ส.ส. 6/1,https://example.invalid,aggregate validation only
+party_list,votes,3,6789,ส.ส. 6/1 (บช.),https://example.invalid,aggregate validation only
+constituency,valid_votes,,54321,ส.ส. 6/1,https://example.invalid,summary total
+```
+
+Then run:
+
+```bash
+python -m src.quality.aggregate_validation --config configs/chaiyaphum_2.yaml
+```
+
+The report is written to `data/processed/aggregate_validation_report.csv` and
+`outputs/reports/aggregate_validation_report.md`. A `validated` row means the
+summed OCR result matches the aggregate reference; a `discrepancy` row means
+the original source PDF/crop must be reviewed.
+
 ## 99% Accuracy Workflow
 
 Raw OCR accuracy is not enough for election data. Use these quality-control

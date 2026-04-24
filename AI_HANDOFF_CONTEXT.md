@@ -35,6 +35,10 @@ use `--skip-ocr` after copying OCR artifacts back.
   overwrite row-level OCR or reviewed values from `6/1` totals automatically.
   If totals differ, go back to the relevant `5/16`-`5/18` source PDF page,
   crop, raw OCR JSON, and review queue item.
+- Optional aggregate references belong in
+  `data/external/aggregate_validation_reference.csv`; the report writer
+  `src.quality.aggregate_validation` emits discrepancy evidence only and does
+  not mutate `election_results_long.csv`, final CSVs, or reviewed data.
 - Constituency ballot (`ส.ส.เขต`) candidate numbers are constituency-scoped.
   The same `candidate_no` can refer to different people in different
   constituencies.
@@ -136,7 +140,17 @@ Validation summary:
 - Vote totals over valid votes: pass
 - Exact complete-group choice-vote totals: pass
 - Ballot accounting: pass
-- Needs review rows: warn, `18,863`
+- Needs review rows: warn, `17,278`
+
+Aggregate validation:
+
+- Official `ส.ส. 6/1` / `ส.ส. 6/1 (บช.)` reference is now present in
+  `data/external/aggregate_validation_reference.csv`.
+- Reference rows: `74` total (`12` constituency, `62` party-list).
+- Current aggregate report after rebuilding without rerunning OCR:
+  `69` discrepancies, `4` missing actual aggregate fields, `1` validated row.
+- The aggregate reference is only for validation/flagging; do not overwrite
+  unit-level OCR values with `6/1` totals.
 
 Accuracy report:
 
@@ -148,27 +162,28 @@ Accuracy report:
 
 Review queue:
 
-- Total rows: `41,637`
-- `P0`: `20,054`
-- `P1`: `21,583`
+- Total rows: `38,610`
+- `P0`: `18,657`
+- `P1`: `19,953`
 - Top reasons:
-  - `parser_marked_needs_review`: `18,863`
-  - `missing_votes`: `18,836`
+  - `parser_marked_needs_review`: `17,278`
+  - `missing_votes`: `17,251`
   - `master_data_unmatched`: `1,930`
-  - `missing_source_page`: `1,218`
-  - `low_ocr_confidence`: `780`
+  - `missing_source_page`: `1,406`
+  - `low_ocr_confidence`: `735`
   - `invalid_text_charset`: `10`
 
 P0 fallback targets:
 
-- Total targets: `1,786`
-- `5_18`: `565` targets, `1,565` affected rows
-- `5_18_partylist`: `1,209` targets, `18,376` affected rows
-- `missing_source_page` targets: `24` targets, `2,436` affected rows
+- Total targets: `2,298`
+- `5_18`: `503` targets
+- `5_18_partylist`: `1,783` targets
+- Advance-form targets: `12` targets across `5_16`, `5_16_partylist`,
+  `5_17`, and `5_17_partylist`
 - Missing source stations:
   - `5_18`: `339, 340, 341`
   - `5_18_partylist`:
-    `124, 322, 323, 324, 325, 326, 327, 328, 329, 330,
+    `99, 124, 199, 232, 243, 322, 323, 324, 325, 326, 327, 328, 329, 330,
     331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341`
 
 Manual review inputs:
@@ -186,8 +201,12 @@ Manual review inputs:
 
 Master data:
 
-- `master_candidates.csv`: `7` rows
-- `master_parties.csv`: `57` rows, `57` unique party numbers
+- `master_candidates.csv`: `7` rows, now sourced from the official ECT
+  `ส.ส. 6/1` constituency aggregate candidate table.
+- `master_parties.csv`: `57` rows, `57` unique party numbers, now sourced
+  from the official ECT `ส.ส. 6/1 (บช.)` party-list aggregate table.
+- Official reference/data completeness details are documented in
+  `docs/reference_data_audit.md`.
 
 ## Known Problems
 
@@ -198,8 +217,8 @@ Master data:
      `needs_review` until a real PDF/page and vote values are confirmed.
 
 2. Many rows still need review.
-   - Current `needs_review_rows`: `18,863`
-   - Current P0 rows: `20,054`
+   - Current `needs_review_rows`: `17,278`
+   - Current P0 rows: `18,657`
 
 3. Current sample accuracy is perfect but too small for a final claim.
    - `ground_truth_sample.csv` has `84` rows.
@@ -218,9 +237,9 @@ Master data:
 
 6. Current `missing_source_page` gaps now look like source-asset coverage gaps,
    not just parser misses.
-   - The unresolved targets are still exactly:
+   - The unresolved targets are currently:
      - `5_18`: `339, 340, 341`
-     - `5_18_partylist`: `124, 322-341`
+     - `5_18_partylist`: `99, 124, 199, 232, 243, 322-341`
    - Fixed-form source PDFs at the end of the manifest do not currently have
      enough pages to cover the expected station counts if you assume the normal
      `2 pages/station` for `5_18` and `4 pages/station` for `5_18_partylist`.

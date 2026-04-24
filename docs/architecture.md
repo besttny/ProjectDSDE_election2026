@@ -51,3 +51,8 @@ of the official `5/16`-`5/18` form PDFs. Aggregate references such as
 `ส.ส. 6/1` and `ส.ส. 6/1 (บช.)` may be used only after row-level processing to
 validate constituency-level totals and flag discrepancies. They must not be
 used as an automatic overwrite source for OCR rows.
+
+Optional aggregate references are stored in
+`data/external/aggregate_validation_reference.csv`. The generated
+`aggregate_validation_report` compares those totals with summed OCR results and
+never writes back into the cleaned dataset.
