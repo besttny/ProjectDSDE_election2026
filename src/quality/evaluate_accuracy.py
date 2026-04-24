@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -92,6 +93,53 @@ def _normalize_compare(value: object, field: str) -> str:
     return _normalize_text(value)
 
 
+def _name_key(value: object) -> str:
+    text = _normalize_text(value)
+    return re.sub(r"^(นาย|นางสาว|นาง)\s*", "", text).strip()
+
+
+def _candidate_alias_map(config: ProjectConfig) -> dict[str, str]:
+    if "master_candidates_file" not in config.paths:
+        return {}
+    path = config.path("master_candidates_file")
+    if not path.exists():
+        return {}
+    frame = pd.read_csv(path).fillna("")
+    if "canonical_name" not in frame.columns:
+        return {}
+
+    aliases: dict[str, str] = {}
+    for _, row in frame.iterrows():
+        canonical = _normalize_text(row.get("canonical_name", ""))
+        if not canonical:
+            continue
+        values = [canonical]
+        values.extend(
+            alias.strip()
+            for alias in str(row.get("aliases", "")).split("|")
+            if alias.strip()
+        )
+        for value in values:
+            for key in {_normalize_text(value), _name_key(value)}:
+                if key:
+                    aliases[key] = canonical
+    return aliases
+
+
+def _canonicalize_candidate_names(frame: pd.DataFrame, config: ProjectConfig) -> pd.DataFrame:
+    aliases = _candidate_alias_map(config)
+    if frame.empty or "name" not in frame.columns or not aliases:
+        return frame
+    normalized = frame.copy()
+
+    def canonicalize(value: object) -> str:
+        text = _normalize_text(value)
+        return aliases.get(text) or aliases.get(_name_key(text)) or text
+
+    normalized["name"] = normalized["name"].map(canonicalize)
+    return normalized
+
+
 def load_ground_truth(config: ProjectConfig) -> pd.DataFrame:
     frame = _read_csv(config.path("ground_truth_file"), GROUND_TRUTH_COLUMNS)
     if frame.empty:
@@ -171,7 +219,7 @@ def _report_row(metric: str, correct: int, total: int, target: float, details: s
 
 def evaluate_accuracy(config: ProjectConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     target = float(config.quality.get("target_accuracy", 0.99))
-    ground_truth = load_ground_truth(config)
+    ground_truth = _canonicalize_candidate_names(load_ground_truth(config), config)
     if ground_truth.empty:
         report = pd.DataFrame(
             [
@@ -194,7 +242,7 @@ def evaluate_accuracy(config: ProjectConfig) -> tuple[pd.DataFrame, pd.DataFrame
         )
         return report, pd.DataFrame(columns=DETAIL_COLUMNS)
 
-    predictions = load_predictions(config)
+    predictions = _canonicalize_candidate_names(load_predictions(config), config)
     merged = ground_truth.merge(
         predictions,
         on=KEY_COLUMNS,

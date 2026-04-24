@@ -18,6 +18,7 @@ def _config(root: Path) -> ProjectConfig:
                 "reports_dir": "outputs/reports",
                 "correction_file": "data/external/manual_corrections.csv",
                 "ground_truth_file": "data/external/ground_truth_sample.csv",
+                "master_candidates_file": "data/external/master_candidates.csv",
             },
             "outputs": {
                 "election_results": "data/processed/election_results_long.csv",
@@ -41,7 +42,7 @@ def test_evaluate_accuracy_compares_ground_truth_to_final_schema(tmp_path: Path)
         "province,constituency_no,form_type,vote_type,polling_station_no,district,subdistrict,"
         "choice_no,choice_name,party_name,votes,eligible_voters,ballots_cast,valid_votes,"
         "invalid_votes,no_vote,source_pdf,source_page,ocr_engine,ocr_confidence,validation_status\n"
-        "ชัยภูมิ,2,5_18,constituency,2401002,เมือง,ในเมือง,3,นายสมชาย,เพื่อไทย,312,"
+        "ชัยภูมิ,2,5_18,constituency,2401002,เมือง,ในเมือง,3,นายสมชาย จริง,เพื่อไทย,312,"
         "800,650,627,8,15,sample.pdf,1,paddleocr,0.95,ok\n",
         encoding="utf-8",
     )
@@ -52,6 +53,13 @@ def test_evaluate_accuracy_compares_ground_truth_to_final_schema(tmp_path: Path)
         "ballot_type,form_type,station_id,choice_no,votes,total_ballots,invalid_ballots,"
         "no_vote_ballots,name,party,source_page,reviewer_notes\n"
         "constituency,518,2401002,3,312,650,8,15,นายสมชาย,เพื่อไทย,1,checked\n",
+        encoding="utf-8",
+    )
+
+    master_path = tmp_path / "data/external/master_candidates.csv"
+    master_path.write_text(
+        "province,constituency_no,form_type,candidate_no,canonical_name,party_name,aliases,source_pdf,source_page,source_note\n"
+        "ชัยภูมิ,2,518,3,นายสมชาย จริง,เพื่อไทย,สมชาย|นายสมชาย,sample.pdf,1,official\n",
         encoding="utf-8",
     )
 

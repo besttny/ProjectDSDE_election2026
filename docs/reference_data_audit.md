@@ -43,8 +43,9 @@ overwrite OCR rows automatically.
 
 - `data/processed/aggregate_validation_report.csv` now compares OCR-derived
   aggregate totals with official `ส.ส. 6/1` references.
-- Current status after rebuilding without rerunning OCR: 69 discrepancies,
-  4 missing actual aggregate fields, and 1 validated row.
+- Current status after importing `data/ocr_all_fresh_artifacts_v3.zip` and
+  rebuilding without rerunning OCR: 70 discrepancies and 4 missing actual
+  aggregate fields.
 - This means the aggregate reference data is now available, but the OCR output
   still needs targeted reruns and manual review. The discrepancy report should
   guide which forms, pages, stations, and fields to inspect first.

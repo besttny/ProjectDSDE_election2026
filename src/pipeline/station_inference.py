@@ -435,6 +435,8 @@ def apply_station_inference(df: pd.DataFrame, config: ProjectConfig) -> pd.DataF
 
     corrected = df.copy()
     for index, row in corrected.iterrows():
+        if str(row.get("ocr_engine", "")).strip() == "manual_review":
+            continue
         form_type = str(row.get("form_type", "")).strip()
         if form_type not in STATION_FORMS:
             continue
