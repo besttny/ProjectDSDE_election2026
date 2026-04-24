@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart LR
-    A["ECT PDF files"] --> B["Render pages to images<br/>PyMuPDF, 300 DPI"]
+    A["ECT 5/16-5/18 PDF files"] --> B["Render pages to images<br/>PyMuPDF, OCR config DPI"]
     B --> C["Primary OCR<br/>PaddleOCR"]
     C --> D{"Confidence below threshold?"}
     D -- yes --> E["Fallback OCR<br/>EasyOCR"]
@@ -43,3 +43,11 @@ Required columns:
 - `5_18_partylist`
 
 The election-day forms `5_18` and `5_18_partylist` must cover all 341 polling stations.
+
+## Provenance Boundary
+
+Row-level result values must come from OCR, source-page crops, or manual review
+of the official `5/16`-`5/18` form PDFs. Aggregate references such as
+`ส.ส. 6/1` and `ส.ส. 6/1 (บช.)` may be used only after row-level processing to
+validate constituency-level totals and flag discrepancies. They must not be
+used as an automatic overwrite source for OCR rows.

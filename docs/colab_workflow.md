@@ -39,13 +39,15 @@ RUN_REPORTS_AFTER_EACH_BATCH = False
 CHECKPOINT_EACH_BATCH = False
 ```
 
-`accuracy` uses `dpi=300`, `device=gpu:0`, `precision=fp32`,
-`text_det_limit_side_len=1920`, and full zone OCR (`metadata`, `summary`, and
-`table`). `enable_hpi` is disabled by default because PaddleOCR needs the
-optional `ultra-infer` package for that engine. Speed still comes from Colab
-local scratch storage and building reports only once at the end. If the runtime
-is unstable, set `CHECKPOINT_EACH_BATCH = True`; it is slower but writes
-`ocr_checkpoint_latest.zip` for the next run.
+`accuracy` keeps the repo OCR defaults from `configs/chaiyaphum_2.yaml`, uses
+`device=gpu:0`, `precision=fp32`, and full zone OCR (`metadata`, `summary`, and
+`table`). The current config is accuracy-first: Thai-only PaddleOCR, high DPI,
+form-specific table profiles, and conservative table-line removal. `enable_hpi`
+is disabled by default because PaddleOCR needs the optional `ultra-infer`
+package for that engine. Speed still comes from Colab local scratch storage and
+building reports only once at the end. If the runtime is unstable, set
+`CHECKPOINT_EACH_BATCH = True`; it is slower but writes `ocr_checkpoint_latest.zip`
+for the next run.
 
 ## 2. Install Dependencies
 
@@ -115,6 +117,11 @@ python -m src.pipeline.run_all --config configs/chaiyaphum_2.yaml --skip-ocr
 
 This updates validation, final CSV schema files, dashboard datasets, insights,
 and OCR progress without rerunning OCR.
+
+The row-level data must still come from OCR/source-page review of the official
+`5/16`-`5/18` PDFs. If later you add `ส.ส. 6/1` or `6/1 (บช.)` references, use
+them only to validate aggregate sums and flag discrepancies; do not use them to
+overwrite OCR rows automatically.
 
 ## 6. Export Colab Artifacts
 

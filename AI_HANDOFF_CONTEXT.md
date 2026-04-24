@@ -27,6 +27,14 @@ use `--skip-ocr` after copying OCR artifacts back.
 
 ## Election-Domain Rules
 
+- The primary dataset must be derived from OCR/source-page review of official
+  ECT PDFs for `5_16`, `5_16_partylist`, `5_17`, `5_17_partylist`, `5_18`,
+  and `5_18_partylist`.
+- `ส.ส. 6/1` and `ส.ส. 6/1 (บช.)` are aggregate validation references only.
+  Use them to compare constituency-level sums and flag discrepancies. Never
+  overwrite row-level OCR or reviewed values from `6/1` totals automatically.
+  If totals differ, go back to the relevant `5/16`-`5/18` source PDF page,
+  crop, raw OCR JSON, and review queue item.
 - Constituency ballot (`ส.ส.เขต`) candidate numbers are constituency-scoped.
   The same `candidate_no` can refer to different people in different
   constituencies.

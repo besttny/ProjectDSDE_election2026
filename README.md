@@ -196,6 +196,25 @@ Do not run the full 2,000+ page OCR locally unless the machine has enough RAM
 and time. The local machine only needs the parsed/raw OCR artifacts to rebuild
 validation, final CSVs, dashboard data, and reports.
 
+## Data Provenance Rule
+
+The primary dataset must come from OCR and source-page review of the official
+ECT form PDFs listed in the manifest:
+
+- `5_16`
+- `5_16_partylist`
+- `5_17`
+- `5_17_partylist`
+- `5_18`
+- `5_18_partylist`
+
+Aggregate announcements such as `ส.ส. 6/1` and `ส.ส. 6/1 (บช.)` are validation
+references only. They may be used to compare summed OCR results at constituency
+level and flag discrepancies, but they must not overwrite row-level OCR values
+or manually reviewed values automatically. When an aggregate total does not
+match, inspect the original `5/16`-`5/18` PDF page, crop, raw OCR JSON, and
+review queue target for the differing field.
+
 ## 99% Accuracy Workflow
 
 Raw OCR accuracy is not enough for election data. Use these quality-control
