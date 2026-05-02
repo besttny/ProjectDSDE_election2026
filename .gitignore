@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.DS_Store
+*.log
+
+.venv/
+venv/
+env/
+
+# Local scratch / Colab artifact bundles
+tmp/
+artifacts/
+*.zip
+
+# Ignore all data
+data/
+
+# แต่ยังเก็บโครงสร้างโฟลเดอร์ (optional)
+!data/
+!data/.gitkeep
+/data
