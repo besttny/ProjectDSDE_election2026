@@ -4,6 +4,7 @@ load_dotenv()  # loads TYPHOON_API_KEY from .env file
 
 # ── CELL BREAK ──
 
+import argparse
 import os, json, hashlib, logging
 from pathlib import Path
 from collections import defaultdict, Counter
@@ -15,22 +16,22 @@ from pypdf import PdfReader
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s | %(message)s")
 log = logging.getLogger("nb01")
 
+def _default_project_root() -> Path:
+    """Resolve repo root from this script instead of a developer-specific path."""
+    return Path(__file__).resolve().parent
+
+
 # Paths
-PROJECT_ROOT = Path(r"C:\Users\thana\OneDrive\Desktop\ProjectDSDE_election2026")
+PROJECT_ROOT = _default_project_root()
 
 GDRIVE_DIR     = PROJECT_ROOT / "data" / "raw" / "pdfs_gdrive"
 EXTERNAL_DIR   = PROJECT_ROOT / "data" / "external"
-EXTERNAL_DIR.mkdir(parents=True, exist_ok=True)
 
 # Constituency metadata
 PROVINCE_NAME      = "ชัยภูมิ"
 PROVINCE_CODE      = "36"
 CONSTITUENCY_NO    = 2
 EXPECTED_STATIONS  = 341
-
-print(f"Project root: {PROJECT_ROOT}")
-print(f"PDF source:   {GDRIVE_DIR}")
-print(f"External:     {EXTERNAL_DIR}")
 
 # ── CELL BREAK ──
 
@@ -68,8 +69,6 @@ log = logging.getLogger("ocr")
 
 # ── CELL BREAK ──
 
-PROJECT_ROOT = Path(r"C:\Users\thana\OneDrive\Desktop\ProjectDSDE_election2026")
-
 EXTERNAL_DIR   = PROJECT_ROOT / "data" / "external"
 IMG_CACHE_DIR  = PROJECT_ROOT / "data" / "raw" / "images"
 PROCESSED_DIR  = PROJECT_ROOT / "data" / "processed"
@@ -77,20 +76,11 @@ OCR_CACHE_DIR  = PROCESSED_DIR / "ocr_cache"     # 1 file per page (raw OCR text
 PAGE_INDEX_DIR = PROCESSED_DIR / "page_index"    # 1 file per source PDF (parsed headers)
 STATION_OUT    = PROCESSED_DIR / "stations_raw"  # 1 JSON per (station × form)
 
-for p in [IMG_CACHE_DIR, PROCESSED_DIR, OCR_CACHE_DIR, PAGE_INDEX_DIR, STATION_OUT]:
-    p.mkdir(parents=True, exist_ok=True)
-
 PROVINCE         = "ชัยภูมิ"
 CONSTITUENCY_NO  = 2
 
 # Typhoon OCR
 TYPHOON_API_KEY = os.getenv("TYPHOON_API_KEY")
-if not TYPHOON_API_KEY:
-    raise RuntimeError(
-        "Set TYPHOON_API_KEY in your environment first.\n"
-        "  Bash:    export TYPHOON_API_KEY='sk-...'\n"
-        "  Notebook: os.environ['TYPHOON_API_KEY'] = '...'  (don't commit!)"
-    )
 
 TYPHOON_URL = "https://api.opentyphoon.ai/v1/ocr"
 TYPHOON_PARAMS = {
@@ -102,36 +92,61 @@ TYPHOON_PARAMS = {
     "repetition_penalty": 1.2,
 }
 
-print(f"Project root:  {PROJECT_ROOT}")
-print(f"OCR cache:     {OCR_CACHE_DIR}")
-print(f"Page index:    {PAGE_INDEX_DIR}")
-print(f"Station out:   {STATION_OUT}")
-
-
 # ── CELL BREAK ──
 
-stations_df  = pd.read_csv(EXTERNAL_DIR / "stations.csv",  encoding="utf-8-sig")
-candidates_df = pd.read_csv(EXTERNAL_DIR / "candidates.csv", encoding="utf-8-sig")
-parties_df   = pd.read_csv(EXTERNAL_DIR / "parties.csv",    encoding="utf-8-sig")
-manifest_df  = pd.read_csv(EXTERNAL_DIR / "source_manifest.csv", encoding="utf-8-sig")
+stations_df = pd.DataFrame()
+manifest_df = pd.DataFrame()
+CANDIDATES = {}
+PARTIES = {}
+TAMBOL_STATIONS = {}
 
-# Build lookups
-CANDIDATES = {int(r["candidate_no"]): (r["candidate_name"], r["party_name"])
-              for _, r in candidates_df.iterrows()}
-PARTIES = {int(r["party_no"]): r["party_name"]
-           for _, r in parties_df.iterrows()}
 
-# Tambol → list of station_codes (in order)
-TAMBOL_STATIONS = {
-    t: g.sort_values("station_no")["station_code"].tolist()
-    for t, g in stations_df.groupby("subdistrict")
-}
+def configure_paths(project_root: Path | str | None = None) -> None:
+    """Configure all project-relative paths and create runtime output dirs."""
+    global PROJECT_ROOT, GDRIVE_DIR, EXTERNAL_DIR, IMG_CACHE_DIR
+    global PROCESSED_DIR, OCR_CACHE_DIR, PAGE_INDEX_DIR, STATION_OUT
 
-print(f"Loaded {len(stations_df)} stations, {len(CANDIDATES)} candidates, {len(PARTIES)} parties")
-print(f"Manifest: {len(manifest_df)} (station × form) entries")
-print()
-print("Source kind breakdown:")
-print(manifest_df["source_kind"].value_counts().to_string())
+    PROJECT_ROOT = Path(project_root).expanduser().resolve() if project_root else _default_project_root()
+    GDRIVE_DIR = PROJECT_ROOT / "data" / "raw" / "pdfs_gdrive"
+    EXTERNAL_DIR = PROJECT_ROOT / "data" / "external"
+    IMG_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "images"
+    PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+    OCR_CACHE_DIR = PROCESSED_DIR / "ocr_cache"
+    PAGE_INDEX_DIR = PROCESSED_DIR / "page_index"
+    STATION_OUT = PROCESSED_DIR / "stations_raw"
+
+    for p in [EXTERNAL_DIR, IMG_CACHE_DIR, PROCESSED_DIR, OCR_CACHE_DIR, PAGE_INDEX_DIR, STATION_OUT]:
+        p.mkdir(parents=True, exist_ok=True)
+
+
+def load_reference_data() -> None:
+    """Load reference CSVs lazily so importing this module has no data dependency."""
+    global stations_df, manifest_df, CANDIDATES, PARTIES, TAMBOL_STATIONS
+
+    stations_df = pd.read_csv(EXTERNAL_DIR / "stations.csv", encoding="utf-8-sig")
+    candidates_df = pd.read_csv(EXTERNAL_DIR / "candidates.csv", encoding="utf-8-sig")
+    parties_df = pd.read_csv(EXTERNAL_DIR / "parties.csv", encoding="utf-8-sig")
+    manifest_df = pd.read_csv(EXTERNAL_DIR / "source_manifest.csv", encoding="utf-8-sig")
+
+    CANDIDATES = {int(r["candidate_no"]): (r["candidate_name"], r["party_name"])
+                  for _, r in candidates_df.iterrows()}
+    PARTIES = {int(r["party_no"]): r["party_name"]
+               for _, r in parties_df.iterrows()}
+    TAMBOL_STATIONS = {
+        t: g.sort_values("station_no")["station_code"].tolist()
+        for t, g in stations_df.groupby("subdistrict")
+    }
+
+
+def resolve_project_path(path_value: str | Path | None) -> Path | None:
+    """Resolve cached relative paths across POSIX/Windows separators."""
+    if path_value is None:
+        return None
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    normalized = Path(*str(path_value).replace("\\", "/").split("/"))
+    return PROJECT_ROOT / normalized
 
 
 # ── CELL BREAK ──
@@ -221,7 +236,15 @@ def _extract_text_from_response(payload: dict) -> str:
 
 def _typhoon_request(image_path: Path, *, max_retries: int = 3, timeout: int = 60) -> str:
     """One call, with exponential backoff on transient errors."""
-    headers = {"Authorization": f"Bearer {TYPHOON_API_KEY}"}
+    api_key = os.getenv("TYPHOON_API_KEY") or TYPHOON_API_KEY
+    if not api_key:
+        raise RuntimeError(
+            "Set TYPHOON_API_KEY before OCR is needed.\n"
+            "  Bash: export TYPHOON_API_KEY='sk-...'\n"
+            "  Or put it in a local .env file that is not committed."
+        )
+
+    headers = {"Authorization": f"Bearer {api_key}"}
     last_err = None
 
     for attempt in range(1, max_retries + 1):
@@ -450,7 +473,7 @@ def index_pdf_pages(pdf_path: Path) -> list[dict]:
             hdr = parse_page_header(text)
             pages.append({
                 "page_idx":   i,
-                "image_path": str(img.relative_to(PROJECT_ROOT)),
+                "image_path": img.relative_to(PROJECT_ROOT).as_posix(),
                 **hdr,
                 "ocr_chars":  len(text),
             })
@@ -748,7 +771,9 @@ def process_chunk(chunk: dict, source_pdf: str) -> dict:
     for img_rel in chunk["image_paths"]:
         if img_rel is None:
             continue
-        img = PROJECT_ROOT / img_rel
+        img = resolve_project_path(img_rel)
+        if img is None:
+            continue
         try:
             page_texts.append(ocr_page(img))
         except Exception as e:
@@ -834,6 +859,9 @@ def run_batch(*, force: bool = False, limit_pdfs: Optional[int] = None,
     placeholder key (unkn<page_idx>) and flagged 'station_no_unreadable' so they
     appear in the QA report rather than being silently dropped.
     """
+    configure_paths(PROJECT_ROOT)
+    load_reference_data()
+
     # Unique source PDFs (drop missing)
     sources = manifest_df.dropna(subset=["source_pdf"]).copy()
     if filter_kind:
@@ -888,11 +916,11 @@ def run_batch(*, force: bool = False, limit_pdfs: Optional[int] = None,
 
 # ── CELL BREAK ──
 
-# Smoke test: 1 PDF first (uncomment when TYPHOON_API_KEY is set)
-#run_batch(force=True, limit_pdfs=1)
-
-# Full run after smoke test passes:
-run_batch(force=True)
+# Smoke test example:
+#   python run_batch.py run --limit-pdfs 1 --force
+#
+# Full run:
+#   python run_batch.py run --force
 
 
 # ── CELL BREAK ──
@@ -935,9 +963,6 @@ def aggregate_checkpoints():
 
     print(f"Wrote stations.parquet ({len(stations)} rows), votes.parquet ({len(votes)} rows)")
     return stations, votes
-
-
-stations_df_out, votes_df_out = aggregate_checkpoints()
 
 
 # ── CELL BREAK ──
@@ -995,4 +1020,62 @@ def qa_report():
     print(f"Stations needing review: {len(needs_review)} -> qa_needs_review.csv")
 
 
-qa_report()
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="OCR, aggregate, and QA election PDF extraction outputs."
+    )
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=_default_project_root(),
+        help="Project root. Defaults to the directory containing run_batch.py.",
+    )
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    run_parser = subparsers.add_parser("run", help="Run OCR extraction over source PDFs.")
+    run_parser.add_argument("--force", action="store_true", help="Reprocess existing checkpoints.")
+    run_parser.add_argument("--limit-pdfs", type=int, default=None, help="Process only the first N PDFs.")
+    run_parser.add_argument("--filter-kind", default=None, help="Only process one source_kind value.")
+
+    subparsers.add_parser("aggregate", help="Aggregate checkpoint JSON files into processed CSV/parquet.")
+    subparsers.add_parser("qa", help="Print QA report from processed parquet outputs.")
+
+    all_parser = subparsers.add_parser("all", help="Run OCR, aggregate, and QA report.")
+    all_parser.add_argument("--force", action="store_true", help="Reprocess existing checkpoints.")
+    all_parser.add_argument("--limit-pdfs", type=int, default=None, help="Process only the first N PDFs.")
+    all_parser.add_argument("--filter-kind", default=None, help="Only process one source_kind value.")
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.command is None:
+        parser.print_help()
+        return 0
+    command = args.command
+
+    configure_paths(args.project_root)
+    print(f"Project root:  {PROJECT_ROOT}")
+    print(f"OCR cache:     {OCR_CACHE_DIR}")
+    print(f"Page index:    {PAGE_INDEX_DIR}")
+    print(f"Station out:   {STATION_OUT}")
+
+    if command in {"run", "all"}:
+        run_batch(force=args.force, limit_pdfs=args.limit_pdfs, filter_kind=args.filter_kind)
+
+    if command in {"aggregate", "all"}:
+        aggregate_checkpoints()
+
+    if command == "qa":
+        qa_report()
+    elif command == "all":
+        qa_report()
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
