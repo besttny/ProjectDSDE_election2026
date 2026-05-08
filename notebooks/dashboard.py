@@ -71,6 +71,63 @@ EXTERNAL = BASE / "data" / "external"
 
 
 # ── Loaders ────────────────────────────────────────────────────────────────────
+STATION_NUMERIC_COLS = [
+    "eligible_voters",
+    "voters_present",
+    "ballots_used",
+    "ballots_good",
+    "ballots_spoiled",
+    "ballots_no_vote",
+]
+
+
+def add_station_code_key(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a normalized key so uncertain station codes like 36-...-009? join correctly."""
+    df = df.copy()
+    if "station_code" in df.columns:
+        df["station_code_key"] = (
+            df["station_code"]
+            .astype(str)
+            .str.strip()
+            .str.replace("?", "", regex=False)
+        )
+    return df
+
+
+def dedupe_station_table(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep one station row per normalized station_code for station-level totals."""
+    df = add_station_code_key(df)
+    if "station_code_key" not in df.columns:
+        return df
+
+    for col in STATION_NUMERIC_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df["_station_code_uncertain"] = df["station_code"].astype(str).str.contains("?", regex=False)
+    df["_validation_flag_count"] = (
+        df.get("validation_flags", pd.Series("", index=df.index))
+        .fillna("")
+        .astype(str)
+        .str.split(";")
+        .map(lambda flags: sum(bool(flag.strip()) for flag in flags))
+    )
+    present_numeric = [col for col in STATION_NUMERIC_COLS if col in df.columns]
+    df["_numeric_completeness"] = df[present_numeric].notna().sum(axis=1) if present_numeric else 0
+
+    df = (
+        df.sort_values(
+            ["station_code_key", "_station_code_uncertain", "_validation_flag_count", "_numeric_completeness"],
+            ascending=[True, True, True, False],
+            kind="mergesort",
+        )
+        .drop_duplicates("station_code_key", keep="first")
+        .drop(columns=["_station_code_uncertain", "_validation_flag_count", "_numeric_completeness"])
+        .reset_index(drop=True)
+    )
+    return df
+
+
 @st.cache_data
 def load_data():
     station   = pd.read_csv(CLEAN / "5_18_station.csv",      encoding="utf-8-sig")
@@ -81,6 +138,13 @@ def load_data():
     party_ref = pd.read_csv(EXTERNAL / "parties.csv",         encoding="utf-8-sig")
     v4_votes  = pd.read_csv(CLEAN / "5_18_votes_KNNImputed.csv",      encoding="utf-8-sig")
     v4_party  = pd.read_csv(CLEAN / "5_18_party_vote_KNNImputed.csv", encoding="utf-8-sig")
+
+    station = dedupe_station_table(station)
+    p_station = dedupe_station_table(p_station)
+    votes = add_station_code_key(votes)
+    p_votes = add_station_code_key(p_votes)
+    v4_votes = add_station_code_key(v4_votes)
+    v4_party = add_station_code_key(v4_party)
     
     try:
         missing_st = pd.read_csv(CLEAN / "5_18_missing_stations_report.csv", encoding="utf-8-sig")
@@ -146,17 +210,17 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
 
 def apply_geo_filter(s_df, v_df, pv_df, ps_df, district, subdistrict):
     if district != "All":
-        codes = s_df[s_df["district"] == district]["station_code"].unique()
+        codes = s_df[s_df["district"] == district]["station_code_key"].unique()
         s_df  = s_df[s_df["district"] == district]
-        v_df  = v_df[v_df["station_code"].isin(codes)]
-        pv_df = pv_df[pv_df["station_code"].isin(codes)]
-        ps_df = ps_df[ps_df["station_code"].isin(codes)]
+        v_df  = v_df[v_df["station_code_key"].isin(codes)]
+        pv_df = pv_df[pv_df["station_code_key"].isin(codes)]
+        ps_df = ps_df[ps_df["station_code_key"].isin(codes)]
     if subdistrict != "All":
-        codes = s_df[s_df["subdistrict"] == subdistrict]["station_code"].unique()
+        codes = s_df[s_df["subdistrict"] == subdistrict]["station_code_key"].unique()
         s_df  = s_df[s_df["subdistrict"] == subdistrict]
-        v_df  = v_df[v_df["station_code"].isin(codes)]
-        pv_df = pv_df[pv_df["station_code"].isin(codes)]
-        ps_df = ps_df[ps_df["station_code"].isin(codes)]
+        v_df  = v_df[v_df["station_code_key"].isin(codes)]
+        pv_df = pv_df[pv_df["station_code_key"].isin(codes)]
+        ps_df = ps_df[ps_df["station_code_key"].isin(codes)]
     return s_df, v_df, pv_df, ps_df
 
 
