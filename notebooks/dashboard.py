@@ -79,11 +79,24 @@ def load_data():
     p_votes   = pd.read_csv(CLEAN / "5_18_party_vote.csv",    encoding="utf-8-sig")
     cand_ref  = pd.read_csv(EXTERNAL / "candidates.csv",      encoding="utf-8-sig")
     party_ref = pd.read_csv(EXTERNAL / "parties.csv",         encoding="utf-8-sig")
-    return station, votes, p_station, p_votes, cand_ref, party_ref
+    v4_votes  = pd.read_csv(CLEAN / "5_18_votes_KNNImputed.csv",      encoding="utf-8-sig")
+    v4_party  = pd.read_csv(CLEAN / "5_18_party_vote_KNNImputed.csv", encoding="utf-8-sig")
+    
+    try:
+        missing_st = pd.read_csv(CLEAN / "5_18_missing_stations_report.csv", encoding="utf-8-sig")
+    except FileNotFoundError:
+        missing_st = pd.DataFrame()
+        
+    try:
+        missing_pst = pd.read_csv(CLEAN / "5_18_party_missing_stations_report.csv", encoding="utf-8-sig")
+    except FileNotFoundError:
+        missing_pst = pd.DataFrame()
+        
+    return station, votes, p_station, p_votes, cand_ref, party_ref, v4_votes, v4_party, missing_st, missing_pst
 
 
 try:
-    station_df, votes_df, p_station_df, p_votes_df, cand_ref, party_ref = load_data()
+    station_df, votes_df, p_station_df, p_votes_df, cand_ref, party_ref, v4_votes_df, v4_party_df, missing_st_df, missing_pst_df = load_data()
 except FileNotFoundError as e:
     st.error(f"⚠️ Data files not found: {e}")
     st.stop()
@@ -158,7 +171,7 @@ with st.sidebar:
 
     version = st.selectbox(
         "📊 Data Version",
-        ["V1 — OCR + Imputed", "V2 — Proportional Scale", "V3 — Ground Truth", "🔀 Compare All"],
+        ["V1 — OCR + Imputed", "V2 — Proportional Scale", "V3 — Ground Truth", "V4 — KNN Imputed", "🔀 Compare All"],
     )
     ver = version.split("—")[0].strip()
 
@@ -195,12 +208,17 @@ f_st, f_v, f_pv, f_ps = apply_geo_filter(
 _, f_v2, f_v2p, _ = apply_geo_filter(
     station_df, v2_votes, v2_p_votes, p_station_df, sel_district, sel_sub
 )
+_, f_v4, f_v4p, _ = apply_geo_filter(
+    station_df, v4_votes_df, v4_party_df, p_station_df, sel_district, sel_sub
+)
 
 # Active vote dfs for single-version tabs
 if ver == "V1":
     av, apv = f_v, f_pv
 elif ver == "V2":
     av, apv = f_v2, f_v2p
+elif ver == "V4":
+    av, apv = f_v4, f_v4p
 elif ver == "V3":
     av, apv = v3_cand, v3_party   # province-level only
 else:
@@ -240,9 +258,9 @@ c5.metric("❌ Spoiled Ballots",  f"{spoiled_pct:.2f}%")
 st.divider()
 
 # ── Tabs ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "📊 Turnout", "🧑‍💼 Candidates", "🏛️ Parties",
-    "💡 Split-Voting", "🏘️ Demographics", "📈 Compare Versions", "🛠️ Data Quality",
+    "💡 Split-Voting", "🏘️ Demographics", "📈 Compare Versions", "🛠️ Data Quality", "⚠️ Missing Data"
 ])
 
 
@@ -456,7 +474,7 @@ with tab4:
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
 with tab5:
     if ver == "V3":
-        st.info("Demographics analysis requires station-level data (V1 / V2 only).")
+        st.info("Demographics analysis requires station-level data (V1 / V2 / V4 only).")
     else:
         st.subheader("Voting Preference by Station Size")
         st.caption("Stations grouped into Small / Medium / Large by eligible voter count")
@@ -502,15 +520,17 @@ with tab5:
 
 # ─────────────────────────── TAB 6 · COMPARE VERSIONS ─────────────────────────
 with tab6:
-    st.subheader("V1 vs V2 vs V3 — Side by Side")
+    st.subheader("V1 vs V2 vs V3 vs V4 — Side by Side")
 
     # ── Candidate comparison ──
     v1c = f_v.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V1"})
     v2c = f_v2.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V2"})
     v3c = v3_cand[["entity_name", "votes"]].rename(columns={"votes": "V3"})
+    v4c = f_v4.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V4"})
     comp_c = (
         v1c.merge(v2c, on="entity_name", how="outer")
            .merge(v3c, on="entity_name", how="outer")
+           .merge(v4c, on="entity_name", how="outer")
            .sort_values("V3", ascending=False).reset_index(drop=True)
     )
 
@@ -519,6 +539,7 @@ with tab6:
         ("V1", ORANGE,   "V1 — OCR + Imputed"),
         ("V2", LIGHT_OG, "V2 — Proportional"),
         ("V3", WHITE,    "V3 — Ground Truth"),
+        ("V4", "#8172B3", "V4 — KNN Imputed"),
     ]:
         fig.add_trace(go.Bar(
             name=name, y=comp_c["entity_name"], x=comp_c[col],
@@ -539,9 +560,11 @@ with tab6:
     v1p = f_pv.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V1"})
     v2p = f_v2p.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V2"})
     v3p = v3_party[["entity_name", "votes"]].rename(columns={"votes": "V3"})
+    v4p = f_v4p.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V4"})
     comp_p = (
         v1p.merge(v2p, on="entity_name", how="outer")
            .merge(v3p, on="entity_name", how="outer")
+           .merge(v4p, on="entity_name", how="outer")
            .sort_values("V3", ascending=False).head(10).reset_index(drop=True)
     )
 
@@ -550,6 +573,7 @@ with tab6:
         ("V1", ORANGE,   "V1 — OCR + Imputed"),
         ("V2", LIGHT_OG, "V2 — Proportional"),
         ("V3", WHITE,    "V3 — Ground Truth"),
+        ("V4", "#8172B3", "V4 — KNN Imputed"),
     ]:
         fig2.add_trace(go.Bar(
             name=name, y=comp_p["entity_name"], x=comp_p[col],
@@ -571,8 +595,9 @@ with tab6:
     acc = comp_c.copy()
     acc["V1 acc %"] = (acc["V1"] / acc["V3"] * 100).round(1)
     acc["V2 acc %"] = (acc["V2"] / acc["V3"] * 100).round(1)
+    acc["V4 acc %"] = (acc["V4"] / acc["V3"] * 100).round(1)
     st.dataframe(
-        acc[["entity_name", "V1", "V2", "V3", "V1 acc %", "V2 acc %"]]
+        acc[["entity_name", "V1", "V2", "V3", "V4", "V1 acc %", "V2 acc %", "V4 acc %"]]
         .rename(columns={"entity_name": "Candidate"}),
         use_container_width=True, hide_index=True,
     )
@@ -609,3 +634,24 @@ with tab7:
         flagged[["station_code", "district", "subdistrict", "validation_flags"]],
         use_container_width=True, hide_index=True,
     )
+
+# ─────────────────────────── TAB 8 · MISSING DATA ─────────────────────────────
+with tab8:
+    st.subheader("Missing Polling Stations")
+    st.markdown(f"<p style='color:{LGRAY}'>Stations found in reference data but missing from our parsed datasets.</p>", unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown(f"**Constituency Missing Stations** ({len(missing_st_df)})")
+        if not missing_st_df.empty:
+            st.dataframe(missing_st_df, use_container_width=True, hide_index=True)
+        else:
+            st.success("No missing constituency stations!")
+            
+    with col2:
+        st.markdown(f"**Party-List Missing Stations** ({len(missing_pst_df)})")
+        if not missing_pst_df.empty:
+            st.dataframe(missing_pst_df, use_container_width=True, hide_index=True)
+        else:
+            st.success("No missing party-list stations!")
