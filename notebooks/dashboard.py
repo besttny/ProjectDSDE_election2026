@@ -14,53 +14,259 @@ st.set_page_config(
 )
 
 # ── Palette ────────────────────────────────────────────────────────────────────
-ORANGE     = "#FF6B35"
-LIGHT_OG   = "#FFB347"
+ORANGE     = "#FF7A3D"
+LIGHT_OG   = "#FBBF5D"
 DARK_OG    = "#E85D1F"
-CARD_BG    = "#1A1A1A"
-WHITE      = "#FFFFFF"
-LGRAY      = "#AAAAAA"
-PALETTE    = [ORANGE, LIGHT_OG, DARK_OG, "#FFA500", "#FF8C00",
-              "#FF7043", "#FF5722", "#F4511E", "#E64A19", "#BF360C"]
+TEAL       = "#3DD6C6"
+VIOLET     = "#9B8CFF"
+BG         = "#0B0D12"
+CARD_BG    = "#141821"
+PANEL_BG   = "#10141C"
+BORDER     = "#273142"
+WHITE      = "#F8FAFC"
+LGRAY      = "#A7B0C0"
+MUTED      = "#697386"
+GRID       = "#263041"
+PALETTE    = [ORANGE, TEAL, LIGHT_OG, VIOLET, "#67A6FF",
+              "#F87171", "#34D399", "#C084FC", "#FACC15", "#FB7185"]
 
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
+  :root {{
+      --bg: {BG};
+      --panel: {PANEL_BG};
+      --card: {CARD_BG};
+      --border: {BORDER};
+      --text: {WHITE};
+      --muted: {LGRAY};
+      --accent: {ORANGE};
+      --accent-2: {TEAL};
+  }}
+  .stApp {{
+      background:
+        radial-gradient(circle at top left, rgba(255,122,61,0.14), transparent 32rem),
+        radial-gradient(circle at top right, rgba(61,214,198,0.10), transparent 30rem),
+        linear-gradient(180deg, #0B0D12 0%, #0E1219 48%, #0B0D12 100%);
+      color: var(--text);
+  }}
+  .block-container {{
+      padding-top: 1.2rem;
+      padding-bottom: 2.5rem;
+      max-width: 1500px;
+  }}
+  header[data-testid="stHeader"] {{
+      background: transparent;
+      height: 2.75rem;
+      pointer-events: auto;
+  }}
+  [data-testid="stToolbar"] {{
+      visibility: visible;
+  }}
+  #MainMenu, footer {{
+      visibility: hidden;
+      height: 0;
+  }}
+  [data-testid="stExpandSidebarButton"],
+  [data-testid="stSidebarCollapsedControl"],
+  [data-testid="stSidebarCollapseButton"] {{
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      z-index: 999999 !important;
+  }}
+  [data-testid="stExpandSidebarButton"] {{
+      position: fixed !important;
+      top: 0.72rem !important;
+      left: 0.72rem !important;
+      width: 2.25rem !important;
+      height: 2.25rem !important;
+      background: rgba(20,24,33,0.96) !important;
+      border: 1px solid rgba(255,255,255,0.18) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.32);
+  }}
+  [data-testid="stExpandSidebarButton"] svg {{
+      color: {WHITE} !important;
+  }}
+  [data-testid="stSidebarCollapsedControl"] button,
+  [data-testid="stSidebarCollapseButton"] button {{
+      background: rgba(20,24,33,0.94) !important;
+      border: 1px solid rgba(255,255,255,0.14) !important;
+      border-radius: 8px !important;
+      color: {WHITE} !important;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.24);
+  }}
+  section[data-testid="stSidebar"] {{
+      background: linear-gradient(180deg, #10141C 0%, #0B0D12 100%);
+      border-right: 1px solid var(--border);
+  }}
+  section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
+      color: var(--muted);
+  }}
   /* Metric cards */
   [data-testid="metric-container"] {{
-      background: {CARD_BG};
-      border: 1px solid {ORANGE};
-      border-radius: 10px;
-      padding: 14px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 8px;
+      padding: 16px 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.20);
   }}
   [data-testid="metric-container"] label {{
       color: {LGRAY} !important;
-      font-size: 0.82rem !important;
+      font-size: 0.78rem !important;
+      letter-spacing: 0 !important;
   }}
   [data-testid="stMetricValue"] {{
-      color: {ORANGE} !important;
+      color: {WHITE} !important;
       font-size: 1.55rem !important;
-      font-weight: 700 !important;
+      font-weight: 760 !important;
   }}
   /* Tabs */
-  .stTabs [data-baseweb="tab-list"] {{ gap: 6px; }}
+  .stTabs [data-baseweb="tab-list"] {{
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+  }}
   .stTabs [data-baseweb="tab"] {{
-      background: {CARD_BG};
-      border-radius: 8px 8px 0 0;
-      padding: 8px 18px;
+      background: transparent;
+      border-radius: 6px 6px 0 0;
+      padding: 10px 12px;
       color: {LGRAY};
-      font-weight: 500;
+      font-size: 0.86rem;
+      font-weight: 650;
+      border: 1px solid transparent;
+      border-bottom: 0;
   }}
   .stTabs [aria-selected="true"] {{
-      background: {ORANGE} !important;
+      background: rgba(255,122,61,0.16) !important;
+      border-color: rgba(255,122,61,0.42) !important;
       color: {WHITE} !important;
   }}
   /* Headings */
-  h1, h2, h3, h4 {{ color: {ORANGE} !important; }}
+  h1, h2, h3, h4 {{ color: {WHITE} !important; letter-spacing: 0 !important; }}
+  h2, h3 {{ margin-top: 0.7rem !important; }}
   /* Sidebar select labels */
   .stSelectbox > label, .stSlider > label {{ color: {LGRAY} !important; }}
+  div[data-baseweb="select"] > div {{
+      background: rgba(255,255,255,0.045);
+      border-color: var(--border);
+      border-radius: 8px;
+  }}
   /* Divider */
-  hr {{ border-color: {ORANGE}; opacity: 0.3; }}
+  hr {{ border-color: {BORDER}; opacity: 0.75; }}
+  .stDataFrame {{
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+  }}
+  div[data-testid="stPlotlyChart"] {{
+      background: rgba(20,24,33,0.78);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.16);
+      overflow: hidden;
+   }}
+  .modebar {{
+      opacity: 0.2;
+      transition: opacity 120ms ease;
+   }}
+  div[data-testid="stPlotlyChart"]:hover .modebar {{
+      opacity: 0.85;
+   }}
+  .dashboard-hero {{
+      background:
+        linear-gradient(135deg, rgba(255,122,61,0.18), rgba(61,214,198,0.08) 54%, rgba(155,140,255,0.10)),
+        rgba(16,20,28,0.92);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 24px 28px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.22);
+      margin-bottom: 10px;
+  }}
+  .dashboard-hero h1 {{
+      font-size: 2.15rem;
+      line-height: 1.12;
+      margin: 0 0 8px 0;
+      font-weight: 800;
+  }}
+  .dashboard-hero p {{
+      color: {LGRAY};
+      margin: 0;
+      font-size: 0.96rem;
+  }}
+  .version-chip {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      background: rgba(255,122,61,0.16);
+      border: 1px solid rgba(255,122,61,0.36);
+      color: {WHITE};
+      font-size: 0.82rem;
+      font-weight: 700;
+  }}
+  .sidebar-card {{
+      background: rgba(255,255,255,0.045);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 13px 14px;
+      color: {LGRAY};
+      font-size: 0.8rem;
+      line-height: 1.75;
+  }}
+  .sidebar-card strong {{
+      color: {WHITE};
+  }}
+  .insight-card {{
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 8px;
+      padding: 19px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.20);
+  }}
+  .kpi-grid {{
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 6px 0 12px;
+  }}
+  .kpi-card {{
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 8px;
+      padding: 15px 16px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+  }}
+  .kpi-label {{
+      color: {LGRAY};
+      font-size: 0.78rem;
+      font-weight: 650;
+      margin-bottom: 7px;
+      white-space: nowrap;
+  }}
+  .kpi-value {{
+      color: {WHITE};
+      font-size: 1.5rem;
+      font-weight: 820;
+      line-height: 1.1;
+  }}
+  .kpi-card:nth-child(4) .kpi-value,
+  .kpi-card:nth-child(5) .kpi-value {{
+      color: {ORANGE};
+  }}
+  @media (max-width: 1100px) {{
+      .kpi-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+      .dashboard-hero h1 {{ font-size: 1.75rem; }}
+  }}
+  @media (max-width: 720px) {{
+      .kpi-grid {{ grid-template-columns: 1fr; }}
+      .dashboard-hero {{ padding: 20px; }}
+      .stTabs [data-baseweb="tab"] {{ padding: 8px 10px; font-size: 0.8rem; }}
+  }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -134,13 +340,16 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
                  color_discrete_sequence=[color])
     fig.update_layout(
         plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-        font_color=WHITE, title_font_color=ORANGE,
+        font_color=WHITE, title_font_color=WHITE,
+        title_font=dict(size=18, family="Inter, system-ui, sans-serif"),
         height=height,
-        xaxis=dict(gridcolor="#2A2A2A", showgrid=True),
-        yaxis=dict(gridcolor="#2A2A2A", categoryorder="total ascending"),
-        margin=dict(l=8, r=8, t=40, b=8),
+        xaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False),
+        yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False),
+        margin=dict(l=8, r=8, t=46, b=8),
+        bargap=0.28,
+        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
     )
-    fig.update_traces(hovertemplate="%{y}: <b>%{x:,.0f}</b> votes")
+    fig.update_traces(hovertemplate="%{y}: <b>%{x:,.0f}</b> votes", marker_line_width=0)
     return fig
 
 
@@ -170,14 +379,14 @@ def apply_geo_filter(s_df, v_df, pv_df, ps_df, district, subdistrict):
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
-        f"<h2 style='color:{ORANGE}; margin-bottom:0'>🗳️ Election 2026</h2>"
-        f"<p style='color:{LGRAY}; margin-top:2px; font-size:0.9rem'>ชัยภูมิ เขต 2</p>",
+        f"<h2 style='color:{WHITE}; margin-bottom:0'>Election 2026</h2>"
+        f"<p style='color:{LGRAY}; margin-top:3px; font-size:0.86rem'>Chaiyaphum Constituency 2</p>",
         unsafe_allow_html=True,
     )
     st.divider()
 
     version = st.selectbox(
-        "📊 Data Version",
+        "Data Version",
         ["V1 — OCR + Imputed", "V2 — Proportional Scale", "V3 — Ground Truth", "V4 — KNN Imputed", "🔀 Compare All"],
     )
     ver = version.split("—")[0].strip()
@@ -185,7 +394,7 @@ with st.sidebar:
     st.divider()
 
     districts = ["All"] + sorted(station_df["district"].dropna().unique())
-    sel_district = st.selectbox("🏙️ District", districts)
+    sel_district = st.selectbox("District", districts)
 
     sub_pool = (
         station_df[station_df["district"] == sel_district]["subdistrict"]
@@ -193,14 +402,14 @@ with st.sidebar:
         else station_df["subdistrict"]
     )
     subs = ["All"] + sorted(sub_pool.dropna().unique())
-    sel_sub = st.selectbox("📍 Sub-district", subs)
+    sel_sub = st.selectbox("Sub-district", subs)
 
     st.divider()
     cov_c = votes_df["votes"].sum() / ref_cand_total * 100
     cov_p = p_votes_df["votes"].sum() / ref_party_total * 100
     st.markdown(f"""
-    <div style='color:{LGRAY}; font-size:0.78rem; line-height:1.8'>
-      <span style='color:{ORANGE}; font-weight:700'>OCR Coverage</span><br>
+    <div class='sidebar-card'>
+      <strong>OCR Coverage</strong><br>
       Constituency&nbsp;&nbsp;{cov_c:.1f}%<br>
       Party-list&nbsp;&nbsp;&nbsp;&nbsp;{cov_p:.1f}%<br>
       Stations&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{len(station_df)} / 341
@@ -234,15 +443,12 @@ else:
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style='text-align:center; padding:10px 0 4px'>
-  <h1 style='font-size:2.1rem; margin-bottom:2px'>
-    🇹🇭 Thailand General Election 2026
-  </h1>
-  <p style='color:{LGRAY}; font-size:1rem; margin-top:0'>
-    Chaiyaphum Province · Constituency 2 ·
-    <span style='background:{ORANGE}; color:{WHITE}; padding:3px 12px;
-                 border-radius:20px; font-size:0.85rem; font-weight:700'>{ver}</span>
+<div class='dashboard-hero'>
+  <h1>Thailand General Election 2026</h1>
+  <p>
+    Chaiyaphum Province · Constituency 2 · interactive election dashboard
   </p>
+  <span class='version-chip'>Current view · {ver}</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -255,19 +461,37 @@ turnout_pct  = total_pres / total_elig * 100 if total_elig else 0
 total_used   = f_st["ballots_used"].sum()
 spoiled_pct  = f_st["ballots_spoiled"].sum() / total_used * 100 if total_used else 0
 
-c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("🏛️ Stations",        f"{len(f_st):,}")
-c2.metric("👥 Eligible Voters",  f"{total_elig:,.0f}")
-c3.metric("✅ Voters Present",   f"{total_pres:,.0f}")
-c4.metric("📊 Turnout",          f"{turnout_pct:.2f}%")
-c5.metric("❌ Spoiled Ballots",  f"{spoiled_pct:.2f}%")
+st.markdown(f"""
+<div class='kpi-grid'>
+  <div class='kpi-card'>
+    <div class='kpi-label'>Stations</div>
+    <div class='kpi-value'>{len(f_st):,}</div>
+  </div>
+  <div class='kpi-card'>
+    <div class='kpi-label'>Eligible Voters</div>
+    <div class='kpi-value'>{total_elig:,.0f}</div>
+  </div>
+  <div class='kpi-card'>
+    <div class='kpi-label'>Voters Present</div>
+    <div class='kpi-value'>{total_pres:,.0f}</div>
+  </div>
+  <div class='kpi-card'>
+    <div class='kpi-label'>Turnout</div>
+    <div class='kpi-value'>{turnout_pct:.2f}%</div>
+  </div>
+  <div class='kpi-card'>
+    <div class='kpi-label'>Spoiled Ballots</div>
+    <div class='kpi-value'>{spoiled_pct:.2f}%</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 st.divider()
 
 # ── Tabs ───────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "📊 Turnout", "🧑‍💼 Candidates", "🏛️ Parties",
-    "💡 Split-Voting", "🏘️ Demographics", "📈 Compare Versions", "🛠️ Data Quality", "⚠️ Missing Data"
+    "Turnout", "Candidates", "Parties", "Split Vote",
+    "Station Size", "Versions", "Quality", "Missing"
 ])
 
 
@@ -288,17 +512,18 @@ with tab1:
             )
             fig = px.bar(sub_turn, x="pct", y="subdistrict", orientation="h",
                          title="Turnout % by Sub-district",
-                         color="pct", color_continuous_scale=["#1A1A1A", ORANGE])
+                         color="pct", color_continuous_scale=[PANEL_BG, ORANGE])
             fig.update_layout(
                 plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-                font_color=WHITE, title_font_color=ORANGE,
+                font_color=WHITE, title_font_color=WHITE,
                 coloraxis_showscale=False,
-                xaxis=dict(gridcolor="#2A2A2A", title="Turnout %"),
-                yaxis=dict(gridcolor="#2A2A2A", title=""),
-                margin=dict(l=8, r=8, t=40, b=8),
+                xaxis=dict(gridcolor=GRID, title="Turnout %", zeroline=False),
+                yaxis=dict(gridcolor=GRID, title="", zeroline=False),
+                margin=dict(l=8, r=8, t=46, b=8),
+                hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
             )
             fig.update_traces(hovertemplate="%{y}: <b>%{x:.1f}%</b>")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         with col_b:
             dist_share = (
@@ -309,11 +534,12 @@ with tab1:
                           color_discrete_sequence=PALETTE, hole=0.4)
             fig2.update_layout(
                 plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-                font_color=WHITE, title_font_color=ORANGE,
+                font_color=WHITE, title_font_color=WHITE,
                 legend=dict(font=dict(color=WHITE)),
-                margin=dict(l=8, r=8, t=40, b=8),
+                margin=dict(l=8, r=8, t=46, b=8),
+                hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
         # Ballot health
         st.subheader("Ballot Breakdown")
@@ -324,13 +550,30 @@ with tab1:
                       f_st["ballots_no_vote"].sum()],
         })
         fig3 = px.pie(ballot_df, values="Count", names="Type",
-                      color_discrete_sequence=[ORANGE, "#555", LIGHT_OG], hole=0.4)
+                      color_discrete_sequence=[ORANGE, "#555", LIGHT_OG], hole=0.48)
         fig3.update_layout(
             plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-            font_color=WHITE, title_font_color=ORANGE,
-            legend=dict(font=dict(color=WHITE)),
+            font_color=WHITE,
+            title=dict(text="", font=dict(color=WHITE)),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.08,
+                xanchor="center",
+                x=0.5,
+                font=dict(color=WHITE),
+            ),
+            height=430,
+            margin=dict(l=12, r=12, t=8, b=56),
+            hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
         )
-        st.plotly_chart(fig3, use_container_width=True)
+        fig3.update_traces(
+            domain=dict(x=[0.12, 0.88], y=[0.08, 0.98]),
+            textposition="inside",
+            textinfo="percent",
+        )
+        st.plotly_chart(fig3, width="stretch")
 
 
 # ─────────────────────────── TAB 2 · CANDIDATES ───────────────────────────────
@@ -347,7 +590,7 @@ with tab2:
     with col_a:
         fig = styled_bar(cand_agg, "votes", "entity_name",
                          f"Constituency Votes ({ver})", color=ORANGE, height=380)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_b:
         if len(cand_agg) >= 2:
@@ -356,16 +599,14 @@ with tab2:
             margin = int(top2.loc[0, "votes"] - top2.loc[1, "votes"])
             total  = int(cand_agg["votes"].sum())
             st.markdown(f"""
-            <div style='background:{CARD_BG}; border:1px solid {ORANGE};
-                        border-radius:12px; padding:20px; text-align:center;'>
-              <div style='color:{LGRAY}; font-size:0.78rem; text-transform:uppercase;
-                          letter-spacing:1px'>🏆 Winner</div>
-              <div style='color:{ORANGE}; font-size:1rem; font-weight:700;
+            <div class='insight-card' style='text-align:center;'>
+              <div style='color:{LGRAY}; font-size:0.78rem; font-weight:700;'>Winner</div>
+              <div style='color:{WHITE}; font-size:1.04rem; font-weight:760;
                           margin:8px 0'>{winner}</div>
-              <hr style='border-color:{ORANGE}; opacity:0.3'>
+              <hr>
               <div style='color:{LGRAY}; font-size:0.78rem'>Victory Margin</div>
-              <div style='color:{WHITE}; font-size:1.5rem;
-                          font-weight:800'>{margin:,}</div>
+              <div style='color:{ORANGE}; font-size:1.58rem;
+                          font-weight:820'>{margin:,}</div>
               <div style='color:{LGRAY}; font-size:0.78rem'>
                 {margin/total*100:.1f}% of total votes
               </div>
@@ -376,7 +617,7 @@ with tab2:
         st.dataframe(
             cand_agg.rename(columns={"entity_name": "Candidate", "votes": "Votes"})
                     .assign(Votes=lambda d: d["Votes"].apply(lambda v: f"{v:,.0f}")),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
 
 
@@ -398,7 +639,7 @@ with tab3:
         fig = styled_bar(party_top, "votes", "entity_name",
                          f"Party-List Votes — Top {top_n} ({ver})",
                          color=LIGHT_OG, height=420)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_b:
         fig2 = px.pie(party_top, values="votes", names="entity_name",
@@ -406,16 +647,17 @@ with tab3:
                       color_discrete_sequence=PALETTE, hole=0.35)
         fig2.update_layout(
             plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-            font_color=WHITE, title_font_color=ORANGE,
+            font_color=WHITE, title_font_color=WHITE,
             legend=dict(font=dict(color=WHITE)),
-            margin=dict(l=8, r=8, t=40, b=8),
+            margin=dict(l=8, r=8, t=46, b=8),
+            hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
 
     st.dataframe(
         party_top.rename(columns={"entity_name": "Party", "votes": "Votes"})
                  .assign(Votes=lambda d: d["Votes"].apply(lambda v: f"{v:,.0f}")),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
 
@@ -459,22 +701,22 @@ with tab4:
     fig.update_layout(
         barmode="group", title="Split-Ticket Voting — Top 10 Parties",
         plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-        font_color=WHITE, title_font_color=ORANGE,
-        xaxis=dict(gridcolor="#2A2A2A"),
-        yaxis=dict(gridcolor="#2A2A2A", categoryorder="total ascending"),
+        font_color=WHITE, title_font_color=WHITE,
+        xaxis=dict(gridcolor=GRID, zeroline=False),
+        yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False),
         legend=dict(font=dict(color=WHITE)),
         height=430,
-        margin=dict(l=8, r=8, t=40, b=8),
+        margin=dict(l=8, r=8, t=46, b=8),
+        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.caption(
-        "✅ Positive gap = candidate outperformed party   "
-        "❌ Negative gap = party outperformed candidate"
+        "Positive gap = candidate outperformed party · Negative gap = party outperformed candidate"
     )
     st.dataframe(
         split[["Party", "Candidate_Votes", "Party_List_Votes", "Vote_Gap"]],
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
 
@@ -516,13 +758,14 @@ with tab5:
         
         fig.update_layout(
             plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-            font_color=WHITE, title_font_color=ORANGE,
-            xaxis=dict(gridcolor="#2A2A2A"),
-            yaxis=dict(gridcolor="#2A2A2A"),
-            legend=dict(font=dict(color=WHITE), title_font_color=ORANGE),
+            font_color=WHITE, title_font_color=WHITE,
+            xaxis=dict(gridcolor=GRID, zeroline=False),
+            yaxis=dict(gridcolor=GRID, zeroline=False),
+            legend=dict(font=dict(color=WHITE), title_font_color=WHITE),
             height=420,
+            hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 # ─────────────────────────── TAB 6 · COMPARE VERSIONS ─────────────────────────
@@ -555,13 +798,14 @@ with tab6:
     fig.update_layout(
         barmode="group", title="Constituency Votes — All Versions",
         plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-        font_color=WHITE, title_font_color=ORANGE,
-        xaxis=dict(gridcolor="#2A2A2A"),
-        yaxis=dict(gridcolor="#2A2A2A", categoryorder="total ascending"),
+        font_color=WHITE, title_font_color=WHITE,
+        xaxis=dict(gridcolor=GRID, zeroline=False),
+        yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False),
         legend=dict(font=dict(color=WHITE)),
-        height=420, margin=dict(l=8, r=8, t=40, b=8),
+        height=420, margin=dict(l=8, r=8, t=46, b=8),
+        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # ── Party comparison ──
     v1p = f_pv.groupby("entity_name")["votes"].sum().reset_index().rename(columns={"votes": "V1"})
@@ -589,13 +833,14 @@ with tab6:
     fig2.update_layout(
         barmode="group", title="Party-List Votes — Top 10, All Versions",
         plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-        font_color=WHITE, title_font_color=ORANGE,
-        xaxis=dict(gridcolor="#2A2A2A"),
-        yaxis=dict(gridcolor="#2A2A2A", categoryorder="total ascending"),
+        font_color=WHITE, title_font_color=WHITE,
+        xaxis=dict(gridcolor=GRID, zeroline=False),
+        yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False),
         legend=dict(font=dict(color=WHITE)),
-        height=460, margin=dict(l=8, r=8, t=40, b=8),
+        height=460, margin=dict(l=8, r=8, t=46, b=8),
+        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
     )
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width="stretch")
 
     # ── Accuracy table ──
     st.subheader("OCR Accuracy vs Ground Truth")
@@ -606,7 +851,7 @@ with tab6:
     st.dataframe(
         acc[["entity_name", "V1", "V2", "V3", "V4", "V1 acc %", "V2 acc %", "V4 acc %"]]
         .rename(columns={"entity_name": "Candidate"}),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
     col_a, col_b = st.columns(2)
@@ -630,11 +875,11 @@ with tab7:
 
     fig = styled_bar(flag_counts.head(12), "Count", "Flag",
                      "Top Validation Flags", color=DARK_OG, height=380)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.dataframe(
         flagged[["station_code", "district", "subdistrict", "validation_flags"]],
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
 # ─────────────────────────── TAB 8 · MISSING DATA ─────────────────────────────
@@ -647,13 +892,13 @@ with tab8:
     with col1:
         st.markdown(f"**Constituency Missing Stations** ({len(missing_st_df)})")
         if not missing_st_df.empty:
-            st.dataframe(missing_st_df, use_container_width=True, hide_index=True)
+            st.dataframe(missing_st_df, width="stretch", hide_index=True)
         else:
             st.success("No missing constituency stations!")
             
     with col2:
         st.markdown(f"**Party-List Missing Stations** ({len(missing_pst_df)})")
         if not missing_pst_df.empty:
-            st.dataframe(missing_pst_df, use_container_width=True, hide_index=True)
+            st.dataframe(missing_pst_df, width="stretch", hide_index=True)
         else:
             st.success("No missing party-list stations!")
