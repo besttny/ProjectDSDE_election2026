@@ -94,6 +94,28 @@ def add_station_code_key(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def count_validation_flags(series: pd.Series) -> pd.Series:
+    return (
+        series.fillna("")
+        .astype(str)
+        .str.replace(";", "|", regex=False)
+        .str.split("|")
+        .map(lambda flags: sum(bool(flag.strip()) for flag in flags))
+    )
+
+
+def explode_validation_flags(series: pd.Series) -> pd.Series:
+    flags = (
+        series.fillna("")
+        .astype(str)
+        .str.replace(";", "|", regex=False)
+        .str.split("|")
+        .explode()
+        .str.strip()
+    )
+    return flags[flags.ne("")]
+
+
 def dedupe_station_table(df: pd.DataFrame) -> pd.DataFrame:
     """Keep one station row per normalized station_code for station-level totals."""
     df = add_station_code_key(df)
@@ -105,12 +127,8 @@ def dedupe_station_table(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df["_station_code_uncertain"] = df["station_code"].astype(str).str.contains("?", regex=False)
-    df["_validation_flag_count"] = (
+    df["_validation_flag_count"] = count_validation_flags(
         df.get("validation_flags", pd.Series("", index=df.index))
-        .fillna("")
-        .astype(str)
-        .str.split(";")
-        .map(lambda flags: sum(bool(flag.strip()) for flag in flags))
     )
     present_numeric = [col for col in STATION_NUMERIC_COLS if col in df.columns]
     df["_numeric_completeness"] = df[present_numeric].notna().sum(axis=1) if present_numeric else 0
@@ -210,17 +228,19 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
 
 def apply_geo_filter(s_df, v_df, pv_df, ps_df, district, subdistrict):
     if district != "All":
-        codes = s_df[s_df["district"] == district]["station_code_key"].unique()
+        cand_codes = s_df[s_df["district"] == district]["station_code_key"].unique()
+        party_codes = ps_df[ps_df["district"] == district]["station_code_key"].unique()
         s_df  = s_df[s_df["district"] == district]
-        v_df  = v_df[v_df["station_code_key"].isin(codes)]
-        pv_df = pv_df[pv_df["station_code_key"].isin(codes)]
-        ps_df = ps_df[ps_df["station_code_key"].isin(codes)]
+        ps_df = ps_df[ps_df["district"] == district]
+        v_df  = v_df[v_df["station_code_key"].isin(cand_codes)]
+        pv_df = pv_df[pv_df["station_code_key"].isin(party_codes)]
     if subdistrict != "All":
-        codes = s_df[s_df["subdistrict"] == subdistrict]["station_code_key"].unique()
+        cand_codes = s_df[s_df["subdistrict"] == subdistrict]["station_code_key"].unique()
+        party_codes = ps_df[ps_df["subdistrict"] == subdistrict]["station_code_key"].unique()
         s_df  = s_df[s_df["subdistrict"] == subdistrict]
-        v_df  = v_df[v_df["station_code_key"].isin(codes)]
-        pv_df = pv_df[pv_df["station_code_key"].isin(codes)]
-        ps_df = ps_df[ps_df["station_code_key"].isin(codes)]
+        ps_df = ps_df[ps_df["subdistrict"] == subdistrict]
+        v_df  = v_df[v_df["station_code_key"].isin(cand_codes)]
+        pv_df = pv_df[pv_df["station_code_key"].isin(party_codes)]
     return s_df, v_df, pv_df, ps_df
 
 
@@ -241,13 +261,20 @@ with st.sidebar:
 
     st.divider()
 
-    districts = ["All"] + sorted(station_df["district"].dropna().unique())
+    geo_options = pd.concat(
+        [
+            station_df[["district", "subdistrict"]],
+            p_station_df[["district", "subdistrict"]],
+        ],
+        ignore_index=True,
+    ).drop_duplicates()
+    districts = ["All"] + sorted(geo_options["district"].dropna().unique())
     sel_district = st.selectbox("🏙️ District", districts)
 
     sub_pool = (
-        station_df[station_df["district"] == sel_district]["subdistrict"]
+        geo_options[geo_options["district"] == sel_district]["subdistrict"]
         if sel_district != "All"
-        else station_df["subdistrict"]
+        else geo_options["subdistrict"]
     )
     subs = ["All"] + sorted(sub_pool.dropna().unique())
     sel_sub = st.selectbox("📍 Sub-district", subs)
@@ -543,43 +570,46 @@ with tab5:
         st.subheader("Voting Preference by Station Size")
         st.caption("Stations grouped into Small / Medium / Large by eligible voter count")
 
-        sized = f_st.copy()
-        sized["station_size"] = pd.qcut(
-            sized["eligible_voters"].rank(method="first"),
-            q=3, labels=["Small", "Medium", "Large"],
-        )
-        top5 = (
-            apv.groupby("entity_name")["votes"].sum()
-            .nlargest(5).index.tolist()
-        )
-        merged = (
-            apv[apv["entity_name"].isin(top5)]
-            .merge(sized[["station_code", "station_size"]], on="station_code", how="inner")
-        )
-        pivot = (
-            merged.groupby(["station_size", "entity_name"], observed=True)["votes"]
-            .sum().reset_index()
-        )
-        
-        fig = px.bar(
-            pivot, x="station_size", y="votes", color="entity_name",
-            barmode="group", title="Top 5 Parties by Station Size",
-            color_discrete_sequence=PALETTE,
-            category_orders={
-                "station_size": ["Small", "Medium", "Large"],
-                "entity_name": top5  # <-- Fix: Forces bars to render highest to lowest
-            },
-        )
-        
-        fig.update_layout(
-            plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
-            font_color=WHITE, title_font_color=ORANGE,
-            xaxis=dict(gridcolor="#2A2A2A"),
-            yaxis=dict(gridcolor="#2A2A2A"),
-            legend=dict(font=dict(color=WHITE), title_font_color=ORANGE),
-            height=420,
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        sized = f_ps.dropna(subset=["eligible_voters", "station_code_key"]).copy()
+        if len(sized) < 3:
+            st.info("Not enough station-level records for station-size grouping.")
+        else:
+            sized["station_size"] = pd.qcut(
+                sized["eligible_voters"].rank(method="first"),
+                q=3, labels=["Small", "Medium", "Large"],
+            )
+            top5 = (
+                apv.groupby("entity_name")["votes"].sum()
+                .nlargest(5).index.tolist()
+            )
+            merged = (
+                apv[apv["entity_name"].isin(top5)]
+                .merge(sized[["station_code_key", "station_size"]], on="station_code_key", how="inner")
+            )
+            pivot = (
+                merged.groupby(["station_size", "entity_name"], observed=True)["votes"]
+                .sum().reset_index()
+            )
+
+            fig = px.bar(
+                pivot, x="station_size", y="votes", color="entity_name",
+                barmode="group", title="Top 5 Parties by Station Size",
+                color_discrete_sequence=PALETTE,
+                category_orders={
+                    "station_size": ["Small", "Medium", "Large"],
+                    "entity_name": top5,
+                },
+            )
+
+            fig.update_layout(
+                plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+                font_color=WHITE, title_font_color=ORANGE,
+                xaxis=dict(gridcolor="#2A2A2A"),
+                yaxis=dict(gridcolor="#2A2A2A"),
+                legend=dict(font=dict(color=WHITE), title_font_color=ORANGE),
+                height=420,
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 
 # ─────────────────────────── TAB 6 · COMPARE VERSIONS ─────────────────────────
@@ -675,17 +705,16 @@ with tab6:
 
 # ─────────────────────────── TAB 7 · DATA QUALITY ─────────────────────────────
 with tab7:
-    flagged = station_df[station_df["validation_flags"].notna()].copy()
+    flag_counts_per_row = count_validation_flags(station_df["validation_flags"])
+    flagged = station_df[flag_counts_per_row > 0].copy()
     st.markdown(
         f"<p style='color:{LGRAY}'>{len(flagged)} stations have validation flags</p>",
         unsafe_allow_html=True,
     )
 
     flag_counts = (
-        flagged["validation_flags"]
-        .str.split(";").explode()
+        explode_validation_flags(flagged["validation_flags"])
         .str.split(":").str[0]
-        .str.strip("|")
         .value_counts().reset_index()
     )
     flag_counts.columns = ["Flag", "Count"]
