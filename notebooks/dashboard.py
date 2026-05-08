@@ -478,12 +478,17 @@ with tab5:
             merged.groupby(["station_size", "entity_name"], observed=True)["votes"]
             .sum().reset_index()
         )
+        
         fig = px.bar(
             pivot, x="station_size", y="votes", color="entity_name",
             barmode="group", title="Top 5 Parties by Station Size",
             color_discrete_sequence=PALETTE,
-            category_orders={"station_size": ["Small", "Medium", "Large"]},
+            category_orders={
+                "station_size": ["Small", "Medium", "Large"],
+                "entity_name": top5  # <-- Fix: Forces bars to render highest to lowest
+            },
         )
+        
         fig.update_layout(
             plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
             font_color=WHITE, title_font_color=ORANGE,
