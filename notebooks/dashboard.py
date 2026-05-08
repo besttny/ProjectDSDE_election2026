@@ -144,6 +144,13 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
     return fig
 
 
+def split_validation_flags(flags: pd.Series) -> pd.Series:
+    if flags is None or flags.empty:
+        return pd.Series(dtype="string")
+    split = flags.dropna().astype(str).str.split(r"[;|]", regex=True).explode().str.strip()
+    return split[split.ne("")]
+
+
 def apply_geo_filter(s_df, v_df, pv_df, ps_df, district, subdistrict):
     if district != "All":
         codes = s_df[s_df["district"] == district]["station_code"].unique()
@@ -617,14 +624,9 @@ with tab7:
         unsafe_allow_html=True,
     )
 
-    flag_counts = (
-        flagged["validation_flags"]
-        .str.split(";").explode()
-        .str.split(":").str[0]
-        .str.strip("|")
-        .value_counts().reset_index()
-    )
-    flag_counts.columns = ["Flag", "Count"]
+    flag_values = split_validation_flags(flagged["validation_flags"])
+    flag_names = flag_values.str.split(":").str[0] if not flag_values.empty else pd.Series(dtype="string")
+    flag_counts = flag_names.value_counts().rename_axis("Flag").reset_index(name="Count")
 
     fig = styled_bar(flag_counts.head(12), "Count", "Flag",
                      "Top Validation Flags", color=DARK_OG, height=380)

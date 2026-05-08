@@ -91,6 +91,15 @@ TYPHOON_PARAMS = {
     "top_p": 0.6,
     "repetition_penalty": 1.2,
 }
+FLAG_SPLIT_PATTERN = r"[;|]"
+
+
+def split_validation_flags(flags: pd.Series) -> pd.Series:
+    """Split validation flag cells that may use either legacy ';' or current '|' separators."""
+    if flags is None or flags.empty:
+        return pd.Series(dtype="string")
+    split = flags.dropna().astype(str).str.split(FLAG_SPLIT_PATTERN, regex=True).explode().str.strip()
+    return split[split.ne("")]
 
 # ── CELL BREAK ──
 
@@ -983,8 +992,7 @@ def qa_report():
     print(s.groupby(["form_type", "ocr_status"]).size().unstack(fill_value=0).to_string())
     print()
 
-    flags = s["validation_flags"].dropna().str.split(";").explode()
-    flags = flags[flags.str.len() > 0]
+    flags = split_validation_flags(s["validation_flags"])
     if len(flags):
         print(f"Top 15 validation flags ({len(flags)} total):")
         # Just take the prefix before the first ":"
