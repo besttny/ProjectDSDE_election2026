@@ -6,28 +6,24 @@
 
 ## 📁 Project Structure
 ```
-election2026/
+ProjectDSDE_election2026/
 ├── data/
 │   ├── raw/
 │   │   ├── pdfs/          # PDF ต้นฉบับจาก ECT
-│   │   └── images/        # PDF แปลงเป็น image ก่อน OCR
-│   ├── processed/         # ข้อมูลหลัง OCR + cleaning (CSV/Parquet)
-│   └── external/          # ข้อมูลภายนอก
+│   │   └── images/        # รูปภาพที่แปลงจาก PDF สำหรับ OCR/cache
+│   ├── processed/         # ข้อมูลดิบหลัง OCR/parse เช่น checkpoint, raw extracted CSV/Parquet
+│   ├── clean_data/        # ข้อมูลที่ clean/validate/impute แล้ว พร้อมใช้ EDA/dashboard
+│   └── external/          # ข้อมูลอ้างอิง เช่น stations, candidates, parties, manifest
+│
 ├── notebooks/
 │   ├── 01_download_data.ipynb
 │   ├── 02_ocr_extraction.ipynb
 │   ├── 03_cleaning_validation.ipynb
 │   ├── 04_eda_analysis.ipynb
-│   └── 05_dashboard_prep.ipynb
-├── src/
-│   ├── ocr/               # OCR pipeline
-│   ├── pipeline/          # Download & ETL scripts
-│   ├── analysis/          # Analysis helpers
-│   └── dashboard/         # Streamlit app
-├── outputs/
-│   ├── figures/
-│   └── reports/
-├── docs/
+│   ├── 05_comparison_analysis.ipynb
+│   └── dashboard.py
+│
+├── run_batch.py           # CLI สำหรับ OCR/process/aggregate/QA
 ├── requirements.txt
 └── README.md
 ```
