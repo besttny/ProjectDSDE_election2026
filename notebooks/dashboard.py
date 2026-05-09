@@ -2573,7 +2573,9 @@ with tab_adv:
     if ver == "V3":
         st.info("Advanced station-level insights require V1, V2, or V4. V3 is a constituency-level reference total.")
     else:
-        insight_outlier, insight_personal = st.tabs(["Outlier Review", "Personal Vote Index"])
+        insight_outlier, insight_personal, insight_swing = st.tabs([
+            "Outlier Review", "Personal Vote Index", "2023 Swing"
+        ])
 
         with insight_outlier:
             anomaly_df = build_station_anomaly(f_st, av, apv)
@@ -2786,6 +2788,153 @@ with tab_adv:
                     for col in ["Candidate Share %", "Party-list Share %", "Index pp"]:
                         personal_table[col] = pd.to_numeric(personal_table[col], errors="coerce").round(2)
                     st.dataframe(personal_table, width="stretch", hide_index=True)
+
+        with insight_swing:
+            if election66["party_area_long"].empty:
+                empty_state(
+                    "No 2023 area rows",
+                    "Run the Election66 preparation script to enable area-level swing analysis.",
+                )
+            else:
+                e66_scope_parties = election66_party_totals(election66, sel_district, sel_sub)
+                current_scope_parties = current_party_totals(apv, ver)
+                swing_summary = (
+                    e66_scope_parties.merge(current_scope_parties, on="compare_party", how="outer")
+                    .fillna({"votes_2023": 0, "votes_2026": 0})
+                )
+                total_2023 = swing_summary["votes_2023"].sum()
+                total_2026 = swing_summary["votes_2026"].sum()
+                swing_summary["share_2023"] = np.where(
+                    total_2023 > 0,
+                    swing_summary["votes_2023"] / total_2023 * 100,
+                    0.0,
+                )
+                swing_summary["share_2026"] = np.where(
+                    total_2026 > 0,
+                    swing_summary["votes_2026"] / total_2026 * 100,
+                    0.0,
+                )
+                swing_summary["swing_pp"] = swing_summary["share_2026"] - swing_summary["share_2023"]
+                swing_summary["Party"] = swing_summary["compare_party"].apply(party_compare_label)
+                swing_summary = swing_summary.sort_values("swing_pp")
+
+                if swing_summary.empty:
+                    empty_state(
+                        "No party swing rows",
+                        "The selected scope has no party-list rows to compare.",
+                    )
+                else:
+                    fig = px.bar(
+                        swing_summary,
+                        x="swing_pp",
+                        y="Party",
+                        orientation="h",
+                        color="swing_pp",
+                        color_continuous_scale=["#67A6FF", PANEL_BG, ORANGE],
+                        color_continuous_midpoint=0,
+                        title="Party-list Swing from 2023 to 2026",
+                        hover_data={
+                            "share_2023": ":.2f",
+                            "share_2026": ":.2f",
+                            "votes_2023": ":,.0f",
+                            "votes_2026": ":,.0f",
+                            "swing_pp": ":.2f",
+                        },
+                    )
+                    fig.update_layout(
+                        plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
+                        font_color=WHITE, title_font_color=WHITE,
+                        coloraxis_showscale=False,
+                        xaxis=dict(gridcolor=GRID, zeroline=True, zerolinecolor=LGRAY, title="Swing (percentage points)", automargin=True),
+                        yaxis=dict(gridcolor=GRID, title="", zeroline=False, automargin=True),
+                        height=max(430, len(swing_summary) * 30 + 120),
+                        margin=dict(l=10, r=30, t=54, b=54),
+                        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+                    )
+                    fig.update_traces(
+                        hovertemplate=(
+                            "%{y}<br>Swing: <b>%{x:.2f} pp</b>"
+                            "<br>2023 share: %{customdata[0]:.2f}%"
+                            "<br>2026 share: %{customdata[1]:.2f}%"
+                            "<br>2023 votes: %{customdata[2]:,.0f}"
+                            "<br>2026 votes: %{customdata[3]:,.0f}<extra></extra>"
+                        )
+                    )
+                    st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+
+                    ctrl_a, ctrl_b = st.columns([1, 2])
+                    with ctrl_a:
+                        swing_area_level = st.selectbox(
+                            "Swing map level",
+                            ["Sub-district", "District"],
+                            key="advanced_swing_area_level",
+                        )
+                    party_order = (
+                        swing_summary.assign(abs_swing=lambda d: d["swing_pp"].abs())
+                        .sort_values("abs_swing", ascending=False)
+                    )
+                    party_label_to_key = dict(zip(party_order["Party"], party_order["compare_party"]))
+                    with ctrl_b:
+                        swing_party_label = st.selectbox(
+                            "Party to map",
+                            list(party_label_to_key.keys()),
+                            key="advanced_swing_party",
+                        )
+                    swing_party_key = party_label_to_key[swing_party_label]
+
+                    swing_area = prepare_party_swing(
+                        apv, election66, swing_area_level, sel_district, sel_sub
+                    )
+                    if swing_area.empty:
+                        empty_state(
+                            "No area-level swing rows",
+                            "The selected scope has no matching 2023 and 2026 party-list area rows.",
+                        )
+                    else:
+                        station_area = aggregate_station_map(f_st, swing_area_level)[["area_key", "stations"]]
+                        swing_area = (
+                            swing_area[swing_area["compare_party"] == swing_party_key]
+                            .merge(station_area, on="area_key", how="left")
+                        )
+                        swing_geojson = load_geojson(str(
+                            SUBDISTRICT_GEOJSON if swing_area_level == "Sub-district" else DISTRICT_GEOJSON
+                        ))
+                        fig_map, swing_map_df = build_area_metric_map(
+                            swing_area,
+                            swing_geojson,
+                            swing_area_level,
+                            "swing_pp",
+                            f"{swing_party_label} Swing by {swing_area_level}",
+                            "Swing pp",
+                            color_scale=["#67A6FF", PANEL_BG, ORANGE],
+                            midpoint=0,
+                        )
+                        st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+
+                        swing_table = (
+                            swing_area.sort_values("swing_pp", ascending=False)
+                            .rename(columns={
+                                "district": "District",
+                                "subdistrict": "Sub-district",
+                                "votes_2023": "Votes 2023",
+                                "votes_2026": f"Votes 2026 {ver}",
+                                "share_2023": "Share 2023 %",
+                                "share_2026": f"Share 2026 {ver} %",
+                                "swing_pp": "Swing pp",
+                            })
+                        )
+                        cols = [
+                            "District", "Sub-district", "Votes 2023", f"Votes 2026 {ver}",
+                            "Share 2023 %", f"Share 2026 {ver} %", "Swing pp",
+                        ]
+                        if swing_area_level == "District":
+                            cols.remove("Sub-district")
+                        swing_table = swing_table[cols]
+                        for col in ["Votes 2023", f"Votes 2026 {ver}"]:
+                            swing_table[col] = pd.to_numeric(swing_table[col], errors="coerce").round(0).astype(int)
+                        for col in ["Share 2023 %", f"Share 2026 {ver} %", "Swing pp"]:
+                            swing_table[col] = pd.to_numeric(swing_table[col], errors="coerce").round(2)
+                        st.dataframe(swing_table, width="stretch", hide_index=True)
 
 
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
