@@ -159,6 +159,13 @@ def station_summary(scores: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
+def candidate_reference(candidates: pd.DataFrame) -> pd.DataFrame:
+    df = candidates.copy()
+    df.insert(0, "province", PROVINCE_NAME)
+    df.insert(1, "constituency_no", CONSTITUENCY_NO)
+    return df.rename(columns={"vote_count": "official_candidate_total"})
+
+
 def candidate_votes_long(scores: pd.DataFrame, candidates: pd.DataFrame) -> pd.DataFrame:
     id_columns = [
         "id",
@@ -287,6 +294,7 @@ def main() -> None:
     scores = read_csv(SOURCE_DIR / "election_scores_2566.csv")
     locations = read_csv(SOURCE_DIR / "election_locations_66.csv")
     candidates = read_csv(SOURCE_DIR / "candidate66.csv")
+    candidate_ref = candidate_reference(candidates)
 
     area_pairs, subdistrict_lookup = build_reference_area(stations)
 
@@ -312,7 +320,14 @@ def main() -> None:
         ["candidate_no", "candidate_name", "party_name"],
     )
     candidate_totals = candidate_totals.merge(
-        candidates.rename(columns={"vote_count": "official_candidate_total"}),
+        candidate_ref[
+            [
+                "candidate_no",
+                "candidate_name",
+                "party_name",
+                "official_candidate_total",
+            ]
+        ],
         on=["candidate_no", "candidate_name", "party_name"],
         how="left",
     )
@@ -326,6 +341,7 @@ def main() -> None:
     write_csv(scores_filtered, OUTPUT_DIR / "chaiyaphum_2_scores_2566.csv")
     write_csv(scores_area, OUTPUT_DIR / "chaiyaphum_2_scores_area_2566.csv")
     write_csv(locations_filtered, OUTPUT_DIR / "chaiyaphum_2_locations_66.csv")
+    write_csv(candidate_ref, OUTPUT_DIR / "chaiyaphum_2_candidates_2566.csv")
     write_csv(station_df, OUTPUT_DIR / "chaiyaphum_2_station_summary_2566.csv")
     write_csv(candidate_long, OUTPUT_DIR / "chaiyaphum_2_candidate_votes_long_2566.csv")
     write_csv(candidate_long_area, OUTPUT_DIR / "chaiyaphum_2_candidate_votes_area_long_2566.csv")
@@ -337,6 +353,7 @@ def main() -> None:
 
     print(f"Input scores: {len(scores):,} rows")
     print(f"Chaiyaphum constituency 2 scores: {len(scores_filtered):,} rows")
+    print(f"Candidate reference: {len(candidate_ref):,} rows")
     print(f"Project-area station rows: {len(scores_area):,} rows")
     print(f"Location rows: {len(locations_filtered):,} rows")
     print(f"Area summary: {len(area_df):,} subdistricts")
