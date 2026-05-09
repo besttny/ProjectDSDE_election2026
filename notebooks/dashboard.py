@@ -125,8 +125,10 @@ st.markdown(f"""
   }}
   header[data-testid="stHeader"] {{
       background: transparent;
-      height: 2.75rem;
-      pointer-events: auto;
+      height: 0 !important;
+      min-height: 0 !important;
+      pointer-events: none !important;
+      overflow: visible;
   }}
   [data-testid="stToolbar"] {{
       visibility: hidden;
