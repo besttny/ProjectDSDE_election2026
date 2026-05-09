@@ -2562,6 +2562,114 @@ with tab66:
             st.plotly_chart(fig3, width="stretch", config=PLOTLY_CONFIG)
 
 
+# ─────────────────────────── TAB 6 · ADVANCED INSIGHTS ───────────────────────
+with tab_adv:
+    st.subheader("Advanced Insights")
+    st.caption(
+        "Exploratory analysis built from station-level vote patterns. "
+        "Outlier scores are review signals, not evidence of wrongdoing."
+    )
+
+    if ver == "V3":
+        st.info("Advanced station-level insights require V1, V2, or V4. V3 is a constituency-level reference total.")
+    else:
+        insight_outlier, = st.tabs(["Outlier Review"])
+
+        with insight_outlier:
+            anomaly_df = build_station_anomaly(f_st, av, apv)
+            if anomaly_df.empty:
+                empty_state(
+                    "No station rows for outlier review",
+                    "The selected filters returned no station-level rows to score.",
+                )
+            else:
+                high_count = int(anomaly_df["review_score"].ge(75).sum())
+                review_count = int(anomaly_df["review_score"].ge(55).sum())
+                max_score = float(anomaly_df["review_score"].max())
+                avg_score = float(anomaly_df["review_score"].mean())
+                metric_a, metric_b, metric_c, metric_d = st.columns(4)
+                metric_a.metric("High-priority stations", f"{high_count:,}")
+                metric_b.metric("Review queue", f"{review_count:,}")
+                metric_c.metric("Max score", f"{max_score:.1f}")
+                metric_d.metric("Average score", f"{avg_score:.1f}")
+
+                ctrl_a, ctrl_b = st.columns([1, 3])
+                with ctrl_a:
+                    anomaly_area_level = st.selectbox(
+                        "Outlier map level",
+                        ["Sub-district", "District"],
+                        key="advanced_anomaly_area_level",
+                    )
+
+                geojson_path = SUBDISTRICT_GEOJSON if anomaly_area_level == "Sub-district" else DISTRICT_GEOJSON
+                anomaly_geojson = load_geojson(str(geojson_path))
+                anomaly_area = aggregate_anomaly_area(anomaly_df, anomaly_area_level)
+                fig, anomaly_map_df = build_area_metric_map(
+                    anomaly_area,
+                    anomaly_geojson,
+                    anomaly_area_level,
+                    "max_review_score",
+                    f"Outlier Review Score by {anomaly_area_level}",
+                    "Review score",
+                    color_scale=[PANEL_BG, LIGHT_OG, ORANGE, "#F87171"],
+                )
+                st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+
+                feature_cols = [
+                    "turnout_pct", "spoiled_pct", "no_vote_pct",
+                    "winner_share_pct", "margin_pct", "split_abs_gap_pp",
+                ]
+                feature_summary = (
+                    anomaly_df[feature_cols]
+                    .rename(columns={
+                        "turnout_pct": "Turnout %",
+                        "spoiled_pct": "Spoiled %",
+                        "no_vote_pct": "No-vote %",
+                        "winner_share_pct": "Winner share %",
+                        "margin_pct": "Margin %",
+                        "split_abs_gap_pp": "Split gap pp",
+                    })
+                    .agg(["median", "max"])
+                    .T
+                    .reset_index()
+                    .rename(columns={"index": "Feature", "median": "Median", "max": "Max"})
+                )
+                feature_summary["Median"] = feature_summary["Median"].round(2)
+                feature_summary["Max"] = feature_summary["Max"].round(2)
+
+                top_review = anomaly_df.head(20).copy()
+                display_cols = [
+                    "station_code", "district", "subdistrict", "review_score",
+                    "review_level", "review_reason", "turnout_pct", "winner_candidate",
+                    "winner_party", "winner_share_pct", "margin_pct",
+                    "split_party", "split_abs_gap_pp", "validation_flags",
+                ]
+                top_review = top_review[display_cols].rename(columns={
+                    "station_code": "Station",
+                    "district": "District",
+                    "subdistrict": "Sub-district",
+                    "review_score": "Score",
+                    "review_level": "Level",
+                    "review_reason": "Reason",
+                    "turnout_pct": "Turnout %",
+                    "winner_candidate": "Winner",
+                    "winner_party": "Winner Party",
+                    "winner_share_pct": "Winner Share %",
+                    "margin_pct": "Margin %",
+                    "split_party": "Largest Split Party",
+                    "split_abs_gap_pp": "Split Gap pp",
+                    "validation_flags": "Validation Flags",
+                })
+                for col in ["Score", "Turnout %", "Winner Share %", "Margin %", "Split Gap pp"]:
+                    top_review[col] = pd.to_numeric(top_review[col], errors="coerce").round(2)
+
+                st.markdown("#### Top review stations")
+                st.dataframe(top_review, width="stretch", hide_index=True)
+
+                st.markdown("#### Feature range")
+                st.dataframe(feature_summary, width="stretch", hide_index=True)
+
+
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
 with tab5:
     if ver == "V3":
