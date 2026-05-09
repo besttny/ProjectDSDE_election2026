@@ -17,12 +17,10 @@ tmp/
 artifacts/
 *.zip
 
-# Ignore local/raw/generated data, except small reference files needed by the dashboard.
-data/*
-!data/.gitkeep
-!data/external/
-data/external/*
-!data/external/.gitkeep
+# Ignore local/raw/generated data, except directory markers and small reference files needed by the dashboard.
+data/**
+!data/**/
+!data/**/.gitkeep
 !data/external/chaiyaphum_2_districts.geojson
 !data/external/chaiyaphum_2_subdistricts.geojson
 /.claude
