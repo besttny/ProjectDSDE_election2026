@@ -1434,23 +1434,31 @@ def prepare_party_area_index(candidate_votes, party_votes, area_level):
 
     cand = add_area_key(candidate_votes.dropna(subset=["party_name"]), area_level)
     plist = add_area_key(party_votes, area_level)
+    group_cols = (
+        ["area_key", "district", "party_name"]
+        if area_level == "District"
+        else ["area_key", "district", "subdistrict", "party_name"]
+    )
     cand = (
-        cand.groupby(["area_key", "district", "subdistrict", "party_name"], as_index=False)["votes"]
+        cand.groupby(group_cols, as_index=False)["votes"]
         .sum()
         .rename(columns={"votes": "candidate_votes"})
     )
     plist = (
-        plist.groupby(["area_key", "district", "subdistrict", "entity_name"], as_index=False)["votes"]
+        plist.rename(columns={"entity_name": "party_name"})
+        .groupby(group_cols, as_index=False)["votes"]
         .sum()
-        .rename(columns={"entity_name": "party_name", "votes": "party_list_votes"})
+        .rename(columns={"votes": "party_list_votes"})
     )
     if cand.empty and plist.empty:
         return pd.DataFrame(columns=columns)
 
     result = (
-        cand.merge(plist, on=["area_key", "district", "subdistrict", "party_name"], how="outer")
+        cand.merge(plist, on=group_cols, how="outer")
         .fillna({"candidate_votes": 0, "party_list_votes": 0})
     )
+    if area_level == "District":
+        result["subdistrict"] = "All"
     result["candidate_total"] = result.groupby("area_key")["candidate_votes"].transform("sum")
     result["party_list_total"] = result.groupby("area_key")["party_list_votes"].transform("sum")
     result["candidate_share_pct"] = np.where(
@@ -1536,11 +1544,18 @@ def prepare_party_swing(current_party_votes, election66_data, area_level, distri
     if current.empty:
         return pd.DataFrame(columns=columns)
     current["compare_party"] = party_compare_key(current["entity_name"])
+    group_cols = (
+        ["area_key", "district", "compare_party"]
+        if area_level == "District"
+        else ["area_key", "district", "subdistrict", "compare_party"]
+    )
     current_grouped = (
-        current.groupby(["area_key", "district", "subdistrict", "compare_party"], as_index=False)["votes"]
+        current.groupby(group_cols, as_index=False)["votes"]
         .sum()
         .rename(columns={"votes": "votes_2026"})
     )
+    if area_level == "District":
+        current_grouped["subdistrict"] = "All"
     current_grouped["total_2026"] = current_grouped.groupby("area_key")["votes_2026"].transform("sum")
     current_grouped["share_2026"] = np.where(
         current_grouped["total_2026"].gt(0),
@@ -1554,10 +1569,12 @@ def prepare_party_swing(current_party_votes, election66_data, area_level, distri
     past = add_area_key(past, area_level)
     past["compare_party"] = party_compare_key(past["party_name"])
     past_grouped = (
-        past.groupby(["area_key", "district", "subdistrict", "compare_party"], as_index=False)["votes"]
+        past.groupby(group_cols, as_index=False)["votes"]
         .sum()
         .rename(columns={"votes": "votes_2023"})
     )
+    if area_level == "District":
+        past_grouped["subdistrict"] = "All"
     past_grouped["total_2023"] = past_grouped.groupby("area_key")["votes_2023"].transform("sum")
     past_grouped["share_2023"] = np.where(
         past_grouped["total_2023"].gt(0),
@@ -1565,11 +1582,12 @@ def prepare_party_swing(current_party_votes, election66_data, area_level, distri
         0.0,
     )
 
+    merge_cols = ["area_key", "district", "subdistrict", "compare_party"]
     result = (
-        past_grouped[["area_key", "district", "subdistrict", "compare_party", "votes_2023", "share_2023"]]
+        past_grouped[merge_cols + ["votes_2023", "share_2023"]]
         .merge(
-            current_grouped[["area_key", "district", "subdistrict", "compare_party", "votes_2026", "share_2026"]],
-            on=["area_key", "district", "subdistrict", "compare_party"],
+            current_grouped[merge_cols + ["votes_2026", "share_2026"]],
+            on=merge_cols,
             how="outer",
         )
         .fillna({"votes_2023": 0, "share_2023": 0, "votes_2026": 0, "share_2026": 0})
