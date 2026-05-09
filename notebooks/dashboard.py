@@ -2573,7 +2573,7 @@ with tab_adv:
     if ver == "V3":
         st.info("Advanced station-level insights require V1, V2, or V4. V3 is a constituency-level reference total.")
     else:
-        insight_outlier, = st.tabs(["Outlier Review"])
+        insight_outlier, insight_personal = st.tabs(["Outlier Review", "Personal Vote Index"])
 
         with insight_outlier:
             anomaly_df = build_station_anomaly(f_st, av, apv)
@@ -2668,6 +2668,124 @@ with tab_adv:
 
                 st.markdown("#### Feature range")
                 st.dataframe(feature_summary, width="stretch", hide_index=True)
+
+        with insight_personal:
+            personal_overall = prepare_party_index_overall(av, apv)
+            if personal_overall.empty:
+                empty_state(
+                    "No personal vote rows",
+                    "This analysis needs both constituency and party-list votes in the selected scope.",
+                )
+            else:
+                st.caption(
+                    "Personal Vote Index = constituency candidate vote share - party-list vote share. "
+                    "Positive values mean the constituency candidate outperformed the party-list vote."
+                )
+                top_personal = personal_overall.head(12).copy()
+                fig = px.bar(
+                    top_personal.sort_values("personal_vote_index_pp"),
+                    x="personal_vote_index_pp",
+                    y="party_name",
+                    orientation="h",
+                    color="personal_vote_index_pp",
+                    color_continuous_scale=["#67A6FF", PANEL_BG, ORANGE],
+                    color_continuous_midpoint=0,
+                    title="Personal Vote Index by Party",
+                    hover_data={
+                        "candidate_share_pct": ":.2f",
+                        "party_list_share_pct": ":.2f",
+                        "gap_votes": ":,.0f",
+                        "personal_vote_index_pp": ":.2f",
+                    },
+                )
+                fig.update_layout(
+                    plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
+                    font_color=WHITE, title_font_color=WHITE,
+                    coloraxis_showscale=False,
+                    xaxis=dict(gridcolor=GRID, zeroline=True, zerolinecolor=LGRAY, title="Index (percentage points)", automargin=True),
+                    yaxis=dict(gridcolor=GRID, title="", zeroline=False, automargin=True),
+                    height=460,
+                    margin=dict(l=10, r=30, t=54, b=54),
+                    hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+                )
+                fig.update_traces(
+                    hovertemplate=(
+                        "%{y}<br>Index: <b>%{x:.2f} pp</b>"
+                        "<br>Candidate share: %{customdata[0]:.2f}%"
+                        "<br>Party-list share: %{customdata[1]:.2f}%"
+                        "<br>Vote gap: %{customdata[2]:,.0f}<extra></extra>"
+                    )
+                )
+                st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+
+                map_ctrl_a, map_ctrl_b = st.columns([1, 2])
+                with map_ctrl_a:
+                    personal_area_level = st.selectbox(
+                        "Personal vote map level",
+                        ["Sub-district", "District"],
+                        key="advanced_personal_area_level",
+                    )
+                party_options = personal_overall["party_name"].tolist()
+                with map_ctrl_b:
+                    personal_party = st.selectbox(
+                        "Party to map",
+                        party_options,
+                        key="advanced_personal_party",
+                    )
+
+                personal_area = prepare_party_area_index(av, apv, personal_area_level)
+                if personal_area.empty:
+                    empty_state(
+                        "No area-level personal vote rows",
+                        "The selected scope does not contain matching area rows.",
+                    )
+                else:
+                    station_area = aggregate_station_map(f_st, personal_area_level)[["area_key", "stations"]]
+                    personal_area = (
+                        personal_area[personal_area["party_name"] == personal_party]
+                        .merge(station_area, on="area_key", how="left")
+                    )
+                    personal_geojson = load_geojson(str(
+                        SUBDISTRICT_GEOJSON if personal_area_level == "Sub-district" else DISTRICT_GEOJSON
+                    ))
+                    fig_map, personal_map_df = build_area_metric_map(
+                        personal_area,
+                        personal_geojson,
+                        personal_area_level,
+                        "personal_vote_index_pp",
+                        f"{personal_party} Personal Vote Index by {personal_area_level}",
+                        "Index pp",
+                        color_scale=["#67A6FF", PANEL_BG, ORANGE],
+                        midpoint=0,
+                    )
+                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+
+                    personal_table = (
+                        personal_area.sort_values("abs_personal_vote_index_pp", ascending=False)
+                        .head(20)
+                        .rename(columns={
+                            "district": "District",
+                            "subdistrict": "Sub-district",
+                            "candidate_votes": "Candidate Votes",
+                            "party_list_votes": "Party-list Votes",
+                            "candidate_share_pct": "Candidate Share %",
+                            "party_list_share_pct": "Party-list Share %",
+                            "personal_vote_index_pp": "Index pp",
+                            "gap_votes": "Vote Gap",
+                        })
+                    )
+                    cols = [
+                        "District", "Sub-district", "Candidate Votes", "Party-list Votes",
+                        "Candidate Share %", "Party-list Share %", "Index pp", "Vote Gap",
+                    ]
+                    if personal_area_level == "District":
+                        cols.remove("Sub-district")
+                    personal_table = personal_table[cols]
+                    for col in ["Candidate Votes", "Party-list Votes", "Vote Gap"]:
+                        personal_table[col] = pd.to_numeric(personal_table[col], errors="coerce").round(0).astype(int)
+                    for col in ["Candidate Share %", "Party-list Share %", "Index pp"]:
+                        personal_table[col] = pd.to_numeric(personal_table[col], errors="coerce").round(2)
+                    st.dataframe(personal_table, width="stretch", hide_index=True)
 
 
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
