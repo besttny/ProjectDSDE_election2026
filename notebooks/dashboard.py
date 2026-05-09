@@ -2573,8 +2573,8 @@ with tab_adv:
     if ver == "V3":
         st.info("Advanced station-level insights require V1, V2, or V4. V3 is a constituency-level reference total.")
     else:
-        insight_outlier, insight_personal, insight_swing = st.tabs([
-            "Outlier Review", "Personal Vote Index", "2023 Swing"
+        insight_outlier, insight_personal, insight_swing, insight_hotspot = st.tabs([
+            "Outlier Review", "Personal Vote Index", "2023 Swing", "Hotspots"
         ])
 
         with insight_outlier:
@@ -2935,6 +2935,122 @@ with tab_adv:
                         for col in ["Share 2023 %", f"Share 2026 {ver} %", "Swing pp"]:
                             swing_table[col] = pd.to_numeric(swing_table[col], errors="coerce").round(2)
                         st.dataframe(swing_table, width="stretch", hide_index=True)
+
+        with insight_hotspot:
+            if f_st.empty:
+                empty_state(
+                    "No station rows for hotspot analysis",
+                    "The selected filters returned no station-level rows.",
+                )
+            else:
+                party_options = (
+                    apv.groupby("entity_name")["votes"].sum()
+                    .sort_values(ascending=False)
+                    .index.tolist()
+                )
+                if not party_options:
+                    party_options = ["No party-list rows"]
+
+                ctrl_a, ctrl_b, ctrl_c = st.columns([1, 1, 2])
+                with ctrl_a:
+                    hotspot_area_level = st.selectbox(
+                        "Hotspot map level",
+                        ["Sub-district", "District"],
+                        key="advanced_hotspot_area_level",
+                    )
+                with ctrl_b:
+                    hotspot_metric = st.selectbox(
+                        "Hotspot metric",
+                        ["Turnout %", "Victory margin %", "Total votes", "Selected party share"],
+                        key="advanced_hotspot_metric",
+                    )
+                with ctrl_c:
+                    hotspot_party = st.selectbox(
+                        "Selected party",
+                        party_options,
+                        key="advanced_hotspot_party",
+                    )
+
+                hotspot_df = prepare_current_area_hotspots(
+                    f_st,
+                    av,
+                    apv,
+                    hotspot_area_level,
+                    hotspot_party if hotspot_party != "No party-list rows" else None,
+                )
+                if hotspot_df.empty:
+                    empty_state(
+                        "No area rows for hotspots",
+                        "The selected scope does not contain enough rows to aggregate.",
+                    )
+                else:
+                    metric_options = {
+                        "Turnout %": ("turnout_pct", "Turnout %", [PANEL_BG, LIGHT_OG, ORANGE], None),
+                        "Victory margin %": ("margin_pct", "Victory margin %", [PANEL_BG, LIGHT_OG, ORANGE], None),
+                        "Total votes": ("total_votes", "Total votes", [PANEL_BG, TEAL, ORANGE], None),
+                        "Selected party share": (
+                            "selected_party_share_pct",
+                            f"{hotspot_party} share %",
+                            [PANEL_BG, LIGHT_OG, party_color(hotspot_party)],
+                            None,
+                        ),
+                    }
+                    color_col, colorbar_title, color_scale, midpoint = metric_options[hotspot_metric]
+                    hotspot_geojson = load_geojson(str(
+                        SUBDISTRICT_GEOJSON if hotspot_area_level == "Sub-district" else DISTRICT_GEOJSON
+                    ))
+                    fig_map, hotspot_map_df = build_area_metric_map(
+                        hotspot_df,
+                        hotspot_geojson,
+                        hotspot_area_level,
+                        color_col,
+                        f"{colorbar_title} Hotspot by {hotspot_area_level}",
+                        colorbar_title,
+                        color_scale=color_scale,
+                        midpoint=midpoint,
+                    )
+                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+
+                    geo_names = geojson_area_frame(hotspot_geojson, hotspot_area_level)
+                    hotspot_table = (
+                        geo_names.merge(hotspot_df, on="area_key", how="left")
+                        .fillna({
+                            "stations": 0,
+                            "turnout_pct": 0,
+                            "margin_pct": 0,
+                            "total_votes": 0,
+                            "selected_party_share_pct": 0,
+                        })
+                    )
+                    rank_col = color_col
+                    top_hot = hotspot_table.sort_values(rank_col, ascending=False).head(12).copy()
+                    top_hot = top_hot.rename(columns={
+                        "area_name": "Area",
+                        "district": "District",
+                        "subdistrict": "Sub-district",
+                        "stations": "Stations",
+                        "turnout_pct": "Turnout %",
+                        "winner": "Winner",
+                        "winner_party": "Winner Party",
+                        "margin_pct": "Margin %",
+                        "total_votes": "Total Votes",
+                        "selected_party_share_pct": f"{hotspot_party} Share %",
+                    })
+                    table_cols = [
+                        "Area", "District", "Sub-district", "Stations",
+                        "Turnout %", "Winner", "Winner Party", "Margin %",
+                        "Total Votes", f"{hotspot_party} Share %",
+                    ]
+                    if hotspot_area_level == "District":
+                        table_cols.remove("Sub-district")
+                    top_hot = top_hot[table_cols]
+                    for col in ["Stations", "Total Votes"]:
+                        top_hot[col] = pd.to_numeric(top_hot[col], errors="coerce").round(0).astype(int)
+                    for col in ["Turnout %", "Margin %", f"{hotspot_party} Share %"]:
+                        top_hot[col] = pd.to_numeric(top_hot[col], errors="coerce").round(2)
+
+                    st.markdown("#### Top hotspot areas")
+                    st.dataframe(top_hot, width="stretch", hide_index=True)
 
 
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
