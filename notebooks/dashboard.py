@@ -3128,9 +3128,12 @@ with tab_adv:
                         .merge(station_area, on="area_key", how="left")
                         .merge(split_top, on="area_key", how="left")
                     )
+                    cand_party = mismatch_df["candidate_winner_party"].replace("", np.nan)
+                    party_list_party = mismatch_df["party_list_winner_party"].replace("", np.nan)
+                    mismatch_df["has_vote_type_pair"] = cand_party.notna() & party_list_party.notna()
                     mismatch_df["winner_mismatch"] = (
-                        mismatch_df["candidate_winner_party"].fillna("No data")
-                        != mismatch_df["party_list_winner_party"].fillna("No data")
+                        mismatch_df["has_vote_type_pair"]
+                        & cand_party.ne(party_list_party)
                     )
                     mismatch_df["max_split_gap_pp"] = mismatch_df["max_split_gap_pp"].fillna(0)
                     mismatch_df["signed_split_gap_pp"] = mismatch_df["signed_split_gap_pp"].fillna(0)
@@ -3139,13 +3142,15 @@ with tab_adv:
                         mismatch_df["max_split_gap_pp"] + 15,
                         mismatch_df["max_split_gap_pp"],
                     )
+                    mismatch_df.loc[~mismatch_df["has_vote_type_pair"], "mismatch_score"] = 0
 
                     mismatch_count = int(mismatch_df["winner_mismatch"].sum())
-                    area_count = int(mismatch_df["area_key"].nunique())
-                    avg_gap = float(mismatch_df["max_split_gap_pp"].mean())
-                    max_gap = float(mismatch_df["max_split_gap_pp"].max())
+                    comparison_count = int(mismatch_df["has_vote_type_pair"].sum())
+                    comparable_gap = mismatch_df.loc[mismatch_df["has_vote_type_pair"], "max_split_gap_pp"]
+                    avg_gap = float(comparable_gap.mean()) if not comparable_gap.empty else 0.0
+                    max_gap = float(comparable_gap.max()) if not comparable_gap.empty else 0.0
                     metric_a, metric_b, metric_c, metric_d = st.columns(4)
-                    metric_a.metric("Mismatch areas", f"{mismatch_count:,} / {area_count:,}")
+                    metric_a.metric("Mismatch areas", f"{mismatch_count:,} / {comparison_count:,}")
                     metric_b.metric("Max split gap", f"{max_gap:.2f} pp")
                     metric_c.metric("Average split gap", f"{avg_gap:.2f} pp")
                     metric_d.metric("Map score bonus", "+15 if winners differ")
@@ -3179,6 +3184,7 @@ with tab_adv:
                             "party_list_winner": "Party-list Winner",
                             "party_list_winner_party": "Party-list Winner Party",
                             "winner_mismatch": "Winner Mismatch",
+                            "has_vote_type_pair": "Comparable",
                             "largest_gap_party": "Largest Gap Party",
                             "max_split_gap_pp": "Max Split Gap pp",
                             "signed_split_gap_pp": "Signed Gap pp",
@@ -3188,13 +3194,28 @@ with tab_adv:
                     cols = [
                         "Area", "District", "Sub-district", "Stations",
                         "Constituency Winner Party", "Party-list Winner Party",
-                        "Winner Mismatch", "Largest Gap Party",
+                        "Comparable", "Winner Mismatch", "Largest Gap Party",
                         "Max Split Gap pp", "Signed Gap pp", "Turnout %",
                     ]
                     if mismatch_area_level == "District":
                         cols.remove("Sub-district")
                     mismatch_table = mismatch_table[cols]
-                    mismatch_table["Winner Mismatch"] = mismatch_table["Winner Mismatch"].map({True: "Yes", False: "No"})
+                    comparable_mask = mismatch_table["Comparable"].fillna(False).astype(bool).to_numpy()
+                    mismatch_mask = mismatch_table["Winner Mismatch"].fillna(False).astype(bool).to_numpy()
+                    mismatch_table["Winner Mismatch"] = np.select(
+                        [
+                            ~comparable_mask,
+                            mismatch_mask,
+                        ],
+                        ["No data", "Yes"],
+                        default="No",
+                    )
+                    mismatch_table = mismatch_table.drop(columns=["Comparable"])
+                    mismatch_table[["Constituency Winner Party", "Party-list Winner Party"]] = (
+                        mismatch_table[["Constituency Winner Party", "Party-list Winner Party"]]
+                        .fillna("No data")
+                        .replace("", "No data")
+                    )
                     mismatch_table["Stations"] = pd.to_numeric(mismatch_table["Stations"], errors="coerce").fillna(0).round(0).astype(int)
                     for col in ["Max Split Gap pp", "Signed Gap pp", "Turnout %"]:
                         mismatch_table[col] = pd.to_numeric(mismatch_table[col], errors="coerce").round(2)
@@ -3210,7 +3231,7 @@ with tab_adv:
                         y="Area",
                         orientation="h",
                         color="Winner Mismatch",
-                        color_discrete_map={"Yes": ORANGE, "No": TEAL},
+                        color_discrete_map={"Yes": ORANGE, "No": TEAL, "No data": MUTED},
                         title="Largest Vote-Type Gap by Area",
                     )
                     fig_gap.update_layout(
