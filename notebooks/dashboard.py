@@ -2573,8 +2573,8 @@ with tab_adv:
     if ver == "V3":
         st.info("Advanced station-level insights require V1, V2, or V4. V3 is a constituency-level reference total.")
     else:
-        insight_outlier, insight_personal, insight_swing, insight_hotspot = st.tabs([
-            "Outlier Review", "Personal Vote Index", "2023 Swing", "Hotspots"
+        insight_outlier, insight_personal, insight_swing, insight_hotspot, insight_mismatch = st.tabs([
+            "Outlier Review", "Personal Vote Index", "2023 Swing", "Hotspots", "Vote Mismatch"
         ])
 
         with insight_outlier:
@@ -3051,6 +3051,162 @@ with tab_adv:
 
                     st.markdown("#### Top hotspot areas")
                     st.dataframe(top_hot, width="stretch", hide_index=True)
+
+        with insight_mismatch:
+            if av.empty or apv.empty:
+                empty_state(
+                    "No mismatch rows",
+                    "This insight needs both constituency and party-list vote rows.",
+                )
+            else:
+                ctrl_a, ctrl_b = st.columns([1, 3])
+                with ctrl_a:
+                    mismatch_area_level = st.selectbox(
+                        "Mismatch map level",
+                        ["Sub-district", "District"],
+                        key="advanced_mismatch_area_level",
+                    )
+
+                cand_winners = aggregate_vote_map(av, mismatch_area_level, "Constituency")
+                party_winners = aggregate_vote_map(apv, mismatch_area_level, "Party-list")
+                station_area = aggregate_station_map(f_st, mismatch_area_level)[["area_key", "stations", "turnout_pct"]]
+                split_area = prepare_party_area_index(av, apv, mismatch_area_level)
+
+                if split_area.empty or cand_winners.empty or party_winners.empty:
+                    empty_state(
+                        "No area mismatch rows",
+                        "The selected scope does not contain enough overlapping vote rows.",
+                    )
+                else:
+                    split_top = (
+                        split_area.sort_values("abs_personal_vote_index_pp", ascending=False)
+                        .groupby("area_key", as_index=False)
+                        .head(1)
+                        .rename(columns={
+                            "party_name": "largest_gap_party",
+                            "abs_personal_vote_index_pp": "max_split_gap_pp",
+                            "personal_vote_index_pp": "signed_split_gap_pp",
+                        })[["area_key", "largest_gap_party", "max_split_gap_pp", "signed_split_gap_pp"]]
+                    )
+                    mismatch_df = (
+                        cand_winners.rename(columns={
+                            "winner": "candidate_winner",
+                            "winner_party": "candidate_winner_party",
+                            "winner_votes": "candidate_winner_votes",
+                            "margin_pct": "candidate_margin_pct",
+                            "total_votes": "candidate_total_votes",
+                        })
+                        .merge(
+                            party_winners.rename(columns={
+                                "winner": "party_list_winner",
+                                "winner_party": "party_list_winner_party",
+                                "winner_votes": "party_list_winner_votes",
+                                "margin_pct": "party_list_margin_pct",
+                                "total_votes": "party_list_total_votes",
+                            }),
+                            on="area_key",
+                            how="outer",
+                        )
+                        .merge(station_area, on="area_key", how="left")
+                        .merge(split_top, on="area_key", how="left")
+                    )
+                    mismatch_df["winner_mismatch"] = (
+                        mismatch_df["candidate_winner_party"].fillna("No data")
+                        != mismatch_df["party_list_winner_party"].fillna("No data")
+                    )
+                    mismatch_df["max_split_gap_pp"] = mismatch_df["max_split_gap_pp"].fillna(0)
+                    mismatch_df["signed_split_gap_pp"] = mismatch_df["signed_split_gap_pp"].fillna(0)
+                    mismatch_df["mismatch_score"] = np.where(
+                        mismatch_df["winner_mismatch"],
+                        mismatch_df["max_split_gap_pp"] + 15,
+                        mismatch_df["max_split_gap_pp"],
+                    )
+
+                    mismatch_count = int(mismatch_df["winner_mismatch"].sum())
+                    area_count = int(mismatch_df["area_key"].nunique())
+                    avg_gap = float(mismatch_df["max_split_gap_pp"].mean())
+                    max_gap = float(mismatch_df["max_split_gap_pp"].max())
+                    metric_a, metric_b, metric_c, metric_d = st.columns(4)
+                    metric_a.metric("Mismatch areas", f"{mismatch_count:,} / {area_count:,}")
+                    metric_b.metric("Max split gap", f"{max_gap:.2f} pp")
+                    metric_c.metric("Average split gap", f"{avg_gap:.2f} pp")
+                    metric_d.metric("Map score bonus", "+15 if winners differ")
+
+                    mismatch_geojson = load_geojson(str(
+                        SUBDISTRICT_GEOJSON if mismatch_area_level == "Sub-district" else DISTRICT_GEOJSON
+                    ))
+                    fig_map, mismatch_map_df = build_area_metric_map(
+                        mismatch_df,
+                        mismatch_geojson,
+                        mismatch_area_level,
+                        "mismatch_score",
+                        f"Vote Type Mismatch Score by {mismatch_area_level}",
+                        "Mismatch score",
+                        color_scale=[PANEL_BG, LIGHT_OG, ORANGE, "#F87171"],
+                    )
+                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+
+                    geo_names = geojson_area_frame(mismatch_geojson, mismatch_area_level)
+                    mismatch_table = (
+                        geo_names.merge(mismatch_df, on="area_key", how="left")
+                        .sort_values(["winner_mismatch", "max_split_gap_pp"], ascending=[False, False])
+                        .head(20)
+                        .rename(columns={
+                            "area_name": "Area",
+                            "district": "District",
+                            "subdistrict": "Sub-district",
+                            "stations": "Stations",
+                            "candidate_winner": "Constituency Winner",
+                            "candidate_winner_party": "Constituency Winner Party",
+                            "party_list_winner": "Party-list Winner",
+                            "party_list_winner_party": "Party-list Winner Party",
+                            "winner_mismatch": "Winner Mismatch",
+                            "largest_gap_party": "Largest Gap Party",
+                            "max_split_gap_pp": "Max Split Gap pp",
+                            "signed_split_gap_pp": "Signed Gap pp",
+                            "turnout_pct": "Turnout %",
+                        })
+                    )
+                    cols = [
+                        "Area", "District", "Sub-district", "Stations",
+                        "Constituency Winner Party", "Party-list Winner Party",
+                        "Winner Mismatch", "Largest Gap Party",
+                        "Max Split Gap pp", "Signed Gap pp", "Turnout %",
+                    ]
+                    if mismatch_area_level == "District":
+                        cols.remove("Sub-district")
+                    mismatch_table = mismatch_table[cols]
+                    mismatch_table["Winner Mismatch"] = mismatch_table["Winner Mismatch"].map({True: "Yes", False: "No"})
+                    mismatch_table["Stations"] = pd.to_numeric(mismatch_table["Stations"], errors="coerce").fillna(0).round(0).astype(int)
+                    for col in ["Max Split Gap pp", "Signed Gap pp", "Turnout %"]:
+                        mismatch_table[col] = pd.to_numeric(mismatch_table[col], errors="coerce").round(2)
+                    st.dataframe(mismatch_table, width="stretch", hide_index=True)
+
+                    gap_chart = (
+                        mismatch_table.head(12)
+                        .sort_values("Max Split Gap pp")
+                    )
+                    fig_gap = px.bar(
+                        gap_chart,
+                        x="Max Split Gap pp",
+                        y="Area",
+                        orientation="h",
+                        color="Winner Mismatch",
+                        color_discrete_map={"Yes": ORANGE, "No": TEAL},
+                        title="Largest Vote-Type Gap by Area",
+                    )
+                    fig_gap.update_layout(
+                        plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
+                        font_color=WHITE, title_font_color=WHITE,
+                        xaxis=dict(gridcolor=GRID, zeroline=False, title="Gap (percentage points)", automargin=True),
+                        yaxis=dict(gridcolor=GRID, title="", zeroline=False, automargin=True),
+                        legend=right_side_legend(),
+                        height=430,
+                        margin=dict(l=8, r=150, t=54, b=42),
+                        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+                    )
+                    fig_gap.update_traces(hovertemplate="%{y}<br>Gap: <b>%{x:.2f} pp</b><extra></extra>")
+                    st.plotly_chart(fig_gap, width="stretch", config=PLOTLY_CONFIG)
 
 
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
