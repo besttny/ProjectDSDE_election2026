@@ -55,3 +55,29 @@ def test_validation_flag_splitter_supports_legacy_and_current_separators():
     flags = run_batch.split_validation_flags(pd.Series(["alpha;bravo|charlie:1", "", None]))
 
     assert flags.tolist() == ["alpha", "bravo", "charlie:1"]
+
+
+def test_dashboard_map_boundaries_cover_reference_areas():
+    stations = pd.read_csv(ROOT / "data" / "external" / "stations.csv")
+
+    district_geojson = json.loads(
+        (ROOT / "data" / "external" / "chaiyaphum_2_districts.geojson").read_text(encoding="utf-8")
+    )
+    subdistrict_geojson = json.loads(
+        (ROOT / "data" / "external" / "chaiyaphum_2_subdistricts.geojson").read_text(encoding="utf-8")
+    )
+
+    district_names = {
+        feature["properties"]["district"]
+        for feature in district_geojson["features"]
+    }
+    subdistrict_pairs = {
+        (feature["properties"]["district"], feature["properties"]["subdistrict"])
+        for feature in subdistrict_geojson["features"]
+    }
+    reference_pairs = set(
+        zip(stations["district"].astype(str), stations["subdistrict"].astype(str))
+    )
+
+    assert set(stations["district"].unique()) <= district_names
+    assert reference_pairs <= subdistrict_pairs

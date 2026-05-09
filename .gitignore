@@ -17,11 +17,12 @@ tmp/
 artifacts/
 *.zip
 
-# Ignore all data
-data/
-
-# แต่ยังเก็บโครงสร้างโฟลเดอร์ (optional)
-!data/
+# Ignore local/raw/generated data, except small reference files needed by the dashboard.
+data/*
 !data/.gitkeep
-/data
+!data/external/
+data/external/*
+!data/external/.gitkeep
+!data/external/chaiyaphum_2_districts.geojson
+!data/external/chaiyaphum_2_subdistricts.geojson
 /.claude
