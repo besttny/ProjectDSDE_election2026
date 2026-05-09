@@ -612,7 +612,7 @@ with st.sidebar:
 
     version = st.selectbox(
         "Data Version",
-        ["V1 — OCR + Imputed", "V2 — Proportional Scale", "V3 — Ground Truth", "V4 — KNN Imputed", "🔀 Compare All"],
+        ["V1 — OCR + Imputed", "V2 — Proportional Scale", "V3 — Ground Truth", "V4 — KNN Imputed"],
     )
     ver = version.split("—")[0].strip()
 
@@ -670,7 +670,7 @@ elif ver == "V4":
 elif ver == "V3":
     av, apv = v3_cand, v3_party   # province-level only
 else:
-    av, apv = f_v, f_pv           # Compare All → use V1 as base
+    av, apv = f_v, f_pv
 
 
 # ── Header ─────────────────────────────────────────────────────────────────────
