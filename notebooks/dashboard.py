@@ -584,6 +584,23 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
     return fig
 
 
+def right_side_legend(title_text=None):
+    legend = dict(
+        x=1.01,
+        xanchor="left",
+        y=1,
+        yanchor="top",
+        bgcolor="rgba(11,13,18,0.78)",
+        bordercolor=BORDER,
+        borderwidth=1,
+        font=dict(color=WHITE, size=11),
+    )
+    if title_text:
+        legend["title_text"] = title_text
+        legend["title_font_color"] = WHITE
+    return legend
+
+
 def fallback_party_color(name):
     value = str(name)
     idx = sum(ord(ch) for ch in value) % len(PARTY_FALLBACK_PALETTE)
@@ -1430,9 +1447,9 @@ with tab4:
             font_color=WHITE, title_font_color=WHITE,
             xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
             yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
-            legend=dict(font=dict(color=WHITE), x=0.99, xanchor="right", y=0.98, yanchor="top"),
+            legend=right_side_legend(),
             height=430,
-            margin=dict(l=8, r=18, t=46, b=36),
+            margin=dict(l=8, r=160, t=46, b=36),
             hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
         )
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
@@ -1505,17 +1522,9 @@ with tab5:
                         automargin=True,
                     ),
                     yaxis=dict(gridcolor=GRID, zeroline=False, title="", automargin=True),
-                    legend=dict(
-                        title_text="Party",
-                        x=0.99,
-                        xanchor="right",
-                        y=0.93,
-                        yanchor="top",
-                        font=dict(color=WHITE, size=11),
-                        title_font_color=WHITE,
-                    ),
+                    legend=right_side_legend("Party"),
                     height=460,
-                    margin=dict(l=28, r=70, t=76, b=58),
+                    margin=dict(l=28, r=150, t=76, b=58),
                     hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
                 )
                 st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
@@ -1554,8 +1563,8 @@ with tab6:
         font_color=WHITE, title_font_color=WHITE,
         xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
         yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
-        legend=dict(font=dict(color=WHITE), x=0.99, xanchor="right", y=0.98, yanchor="top"),
-        height=420, margin=dict(l=8, r=18, t=46, b=36),
+        legend=right_side_legend(),
+        height=420, margin=dict(l=8, r=150, t=46, b=36),
         hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
     )
     st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
@@ -1589,8 +1598,8 @@ with tab6:
         font_color=WHITE, title_font_color=WHITE,
         xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
         yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
-        legend=dict(font=dict(color=WHITE), x=0.99, xanchor="right", y=0.98, yanchor="top"),
-        height=460, margin=dict(l=8, r=18, t=46, b=36),
+        legend=right_side_legend(),
+        height=460, margin=dict(l=8, r=150, t=46, b=36),
         hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
     )
     st.plotly_chart(fig2, width="stretch", config=PLOTLY_CONFIG)
