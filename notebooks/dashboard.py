@@ -708,6 +708,7 @@ with tab1:
     if ver == "V3":
         st.info("Station-level turnout is only available for V1 / V2 / V4.")
     else:
+        turnout_chart_height = 560
         col_a, col_b = st.columns(2)
 
         with col_a:
@@ -727,7 +728,8 @@ with tab1:
                 coloraxis_showscale=False,
                 xaxis=dict(gridcolor=GRID, title="Turnout %", zeroline=False),
                 yaxis=dict(gridcolor=GRID, title="", zeroline=False),
-                margin=dict(l=8, r=8, t=46, b=8),
+                height=turnout_chart_height,
+                margin=dict(l=10, r=14, t=54, b=58),
                 hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
             )
             fig.update_traces(hovertemplate="%{y}: <b>%{x:.1f}%</b>")
@@ -752,14 +754,14 @@ with tab1:
                     x=0.5,
                     font=dict(color=WHITE),
                 ),
-                height=360,
-                margin=dict(l=12, r=12, t=48, b=66),
+                height=turnout_chart_height,
+                margin=dict(l=18, r=18, t=54, b=92),
                 hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
                 uniformtext_minsize=11,
                 uniformtext_mode="hide",
             )
             fig2.update_traces(
-                domain=dict(x=[0.08, 0.92], y=[0.16, 0.96]),
+                domain=dict(x=[0.08, 0.92], y=[0.22, 0.96]),
                 textposition="inside",
                 textinfo="percent",
             )
