@@ -1738,9 +1738,9 @@ st.markdown(f"""
 st.divider()
 
 # ── Tabs ───────────────────────────────────────────────────────────────────────
-tab_map, tab1, tab2, tab3, tab4, tab66, tab5, tab6, tab7, tab8, tab_adv = st.tabs([
+tab_map, tab1, tab2, tab3, tab4, tab5, tab66, tab6, tab7, tab8, tab_adv = st.tabs([
     "Map", "Turnout", "Candidates", "Parties", "Split Vote",
-    "2023 Compare", "Station Size", "Versions", "Quality", "Missing", "Advanced Insights"
+    "Station Size", "2023 Compare", "Versions", "Quality", "Missing", "Advanced Insights"
 ])
 
 
