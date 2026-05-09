@@ -1,4 +1,5 @@
 import json
+import html
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -651,7 +652,7 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
     return fig
 
 
-def right_side_legend(title_text=None):
+def right_side_legend(title_text=None, traceorder=None):
     legend = dict(
         x=1.01,
         xanchor="left",
@@ -665,7 +666,16 @@ def right_side_legend(title_text=None):
     if title_text:
         legend["title_text"] = title_text
         legend["title_font_color"] = WHITE
+    if traceorder:
+        legend["traceorder"] = traceorder
     return legend
+
+
+def percent_axis_range(values):
+    max_value = pd.to_numeric(pd.Series(values), errors="coerce").max()
+    if pd.isna(max_value) or max_value <= 0:
+        return [0, 1]
+    return [0, min(100, max(5, max_value * 1.12))]
 
 
 def fallback_party_color(name):
@@ -1474,23 +1484,35 @@ with tab2:
     if cand_agg.empty:
         empty_state("No candidate votes", "The selected filters returned no candidate vote rows.")
     else:
+        cand_total = cand_agg["votes"].sum()
+        cand_agg["vote_share_pct"] = np.where(
+            cand_total > 0,
+            cand_agg["votes"] / cand_total * 100,
+            0.0,
+        )
         col_a, col_b = st.columns([3, 1])
         with col_a:
             fig = styled_bar(cand_agg, "votes", "entity_name",
                              f"Constituency Votes ({ver})", color=ORANGE, height=380)
+            fig.update_traces(
+                customdata=cand_agg[["vote_share_pct"]],
+                hovertemplate="%{y}: <b>%{x:,.0f}</b> votes<br>Share: <b>%{customdata[0]:.2f}%</b><extra></extra>",
+            )
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
         with col_b:
             if len(cand_agg) >= 2:
                 top2   = cand_agg.sort_values("votes", ascending=False).iloc[:2].reset_index(drop=True)
                 winner = top2.loc[0, "entity_name"]
+                winner_share = float(top2.loc[0, "vote_share_pct"])
                 margin = int(top2.loc[0, "votes"] - top2.loc[1, "votes"])
-                total  = int(cand_agg["votes"].sum())
+                total  = int(cand_total)
                 st.markdown(f"""
                 <div class='insight-card' style='text-align:center;'>
                   <div style='color:{LGRAY}; font-size:0.78rem; font-weight:700;'>Winner</div>
                   <div style='color:{WHITE}; font-size:1.04rem; font-weight:760;
                               margin:8px 0'>{winner}</div>
+                  <div style='color:{LGRAY}; font-size:0.78rem'>{winner_share:.2f}% of total votes</div>
                   <hr>
                   <div style='color:{LGRAY}; font-size:0.78rem'>Victory Margin</div>
                   <div style='color:{ORANGE}; font-size:1.58rem;
@@ -1502,11 +1524,64 @@ with tab2:
                 """, unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            st.dataframe(
-                cand_agg.rename(columns={"entity_name": "Candidate", "votes": "Votes"})
-                        .assign(Votes=lambda d: d["Votes"].apply(lambda v: f"{v:,.0f}")),
-                width="stretch", hide_index=True,
+            cand_table = cand_agg.rename(
+                columns={
+                    "entity_name": "Candidate",
+                    "votes": "Votes",
+                    "vote_share_pct": "Share",
+                }
+            )[["Candidate", "Votes", "Share"]]
+            cand_table["Votes"] = [
+                f"{votes:,.0f}"
+                for votes, share in zip(cand_table["Votes"], cand_table["Share"])
+            ]
+            cand_table["Share"] = cand_table["Share"].apply(lambda v: f"{v:.2f}%")
+            cand_rows = "\n".join(
+                "<tr>"
+                f"<td>{html.escape(str(row['Candidate']))}</td>"
+                f"<td><strong>{html.escape(str(row['Votes']))}</strong>"
+                f"<span>{html.escape(str(row['Share']))}</span></td>"
+                "</tr>"
+                for _, row in cand_table.iterrows()
             )
+            st.markdown(f"""
+            <div class='candidate-share-table' style='border:1px solid {BORDER}; border-radius:8px; overflow:hidden;'>
+              <table style='width:100%; border-collapse:collapse; font-size:0.78rem;'>
+                <thead>
+                  <tr style='background:rgba(255,255,255,0.045); color:{LGRAY};'>
+                    <th style='padding:8px; text-align:left; font-weight:700;'>Candidate</th>
+                    <th style='padding:8px; text-align:right; font-weight:700;'>Votes / Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cand_rows}
+                </tbody>
+              </table>
+            </div>
+            <style>
+              .candidate-share-table table td {{
+                border-top: 1px solid rgba(255,255,255,0.08);
+                padding: 8px;
+                color: {WHITE};
+                vertical-align: top;
+              }}
+              .candidate-share-table table td:first-child {{
+                font-weight: 700;
+                line-height: 1.25;
+              }}
+              .candidate-share-table table td:last-child {{
+                text-align: right;
+                white-space: nowrap;
+                font-weight: 700;
+              }}
+              .candidate-share-table table td:last-child span {{
+                display: block;
+                color: {LGRAY};
+                font-size: 0.72rem;
+                margin-top: 2px;
+              }}
+            </style>
+            """, unsafe_allow_html=True)
 
 
 # ─────────────────────────── TAB 3 · PARTIES ──────────────────────────────────
@@ -1674,6 +1749,14 @@ with tab66:
             )
         else:
             candidate_compare["vote_change"] = candidate_compare["votes_2026"] - candidate_compare["votes_2023"]
+            candidate_total_2023 = e66_candidates["votes_2023"].sum()
+            candidate_total_2026 = current_candidates["votes_2026"].sum()
+            candidate_compare["share_2023"] = np.nan
+            candidate_compare["share_2026"] = np.nan
+            if candidate_total_2023 > 0:
+                candidate_compare["share_2023"] = candidate_compare["votes_2023"] / candidate_total_2023 * 100
+            if candidate_total_2026 > 0:
+                candidate_compare["share_2026"] = candidate_compare["votes_2026"] / candidate_total_2026 * 100
             candidate_compare["candidate_label"] = (
                 candidate_compare["candidate_name"] + " · "
                 + candidate_compare["party_name_2023"].astype(str) + " → "
@@ -1686,9 +1769,10 @@ with tab66:
                 var_name="Year",
                 value_name="Votes",
             )
+            candidate_year_2026 = f"2026 {ver}"
             candidate_long["Year"] = candidate_long["Year"].replace({
                 "votes_2023": "2023",
-                "votes_2026": f"2026 {ver}",
+                "votes_2026": candidate_year_2026,
             })
 
             fig = px.bar(
@@ -1698,7 +1782,8 @@ with tab66:
                 color="Year",
                 orientation="h",
                 barmode="group",
-                color_discrete_map={"2023": LIGHT_OG, f"2026 {ver}": ORANGE},
+                category_orders={"Year": [candidate_year_2026, "2023"]},
+                color_discrete_map={"2023": LIGHT_OG, candidate_year_2026: ORANGE},
                 title="Constituency Votes by Same Candidate",
             )
             fig.update_layout(
@@ -1706,13 +1791,58 @@ with tab66:
                 font_color=WHITE, title_font_color=WHITE,
                 xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
                 yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
-                legend=right_side_legend(),
+                legend=right_side_legend(traceorder="reversed"),
                 height=430,
                 margin=dict(l=8, r=150, t=54, b=42),
                 hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
             )
             fig.update_traces(hovertemplate="%{y}<br>%{fullData.name}: <b>%{x:,.0f}</b><extra></extra>")
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+
+            candidate_share_long = (
+                candidate_compare.melt(
+                    id_vars=["candidate_label"],
+                    value_vars=["share_2023", "share_2026"],
+                    var_name="Year",
+                    value_name="Vote share %",
+                )
+                .dropna(subset=["Vote share %"])
+            )
+            candidate_share_long["Year"] = candidate_share_long["Year"].replace({
+                "share_2023": "2023",
+                "share_2026": candidate_year_2026,
+            })
+            if not candidate_share_long.empty:
+                fig_share = px.bar(
+                    candidate_share_long,
+                    x="Vote share %",
+                    y="candidate_label",
+                    color="Year",
+                    orientation="h",
+                    barmode="group",
+                    category_orders={"Year": [candidate_year_2026, "2023"]},
+                    color_discrete_map={"2023": LIGHT_OG, candidate_year_2026: ORANGE},
+                    title="Constituency Vote Share by Same Candidate",
+                )
+                fig_share.update_layout(
+                    plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
+                    font_color=WHITE, title_font_color=WHITE,
+                    xaxis=dict(
+                        gridcolor=GRID,
+                        zeroline=False,
+                        title="Vote share (%)",
+                        ticksuffix="%",
+                        range=percent_axis_range(candidate_share_long["Vote share %"]),
+                        automargin=True,
+                    ),
+                    yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
+                    legend=right_side_legend(traceorder="reversed"),
+                    height=430,
+                    margin=dict(l=8, r=150, t=54, b=42),
+                    hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+                )
+                fig_share.update_traces(hovertemplate="%{y}<br>%{fullData.name}: <b>%{x:.2f}%</b><extra></extra>")
+                st.plotly_chart(fig_share, width="stretch", config=PLOTLY_CONFIG)
 
             candidate_table = candidate_compare[[
                 "candidate_name", "party_name_2023", "votes_2023",
@@ -1733,6 +1863,8 @@ with tab66:
         with control_a:
             top_n_66 = st.slider("Show top parties", 5, 20, 10, key="compare66_top_n")
 
+        party_year_2026 = f"2026 {ver}"
+        party_share_long = pd.DataFrame()
         col_a, col_b = st.columns(2)
         with col_a:
             e66_parties = election66_party_totals(election66, sel_district, sel_sub)
@@ -1741,7 +1873,15 @@ with tab66:
                 e66_parties.merge(current_parties, on="compare_party", how="outer")
                 .fillna(0)
             )
+            party_total_2023 = e66_parties["votes_2023"].sum()
+            party_total_2026 = current_parties["votes_2026"].sum()
             party_compare["Party"] = party_compare["compare_party"].apply(party_compare_label)
+            party_compare["share_2023"] = 0.0
+            party_compare["share_2026"] = 0.0
+            if party_total_2023 > 0:
+                party_compare["share_2023"] = party_compare["votes_2023"] / party_total_2023 * 100
+            if party_total_2026 > 0:
+                party_compare["share_2026"] = party_compare["votes_2026"] / party_total_2026 * 100
             party_compare["total"] = party_compare["votes_2023"] + party_compare["votes_2026"]
             party_compare = party_compare.sort_values("total", ascending=False).head(top_n_66)
 
@@ -1756,7 +1896,17 @@ with tab66:
                 )
                 party_long["Year"] = party_long["Year"].replace({
                     "votes_2023": "2023",
-                    "votes_2026": f"2026 {ver}",
+                    "votes_2026": party_year_2026,
+                })
+                party_share_long = party_compare.melt(
+                    id_vars=["Party"],
+                    value_vars=["share_2023", "share_2026"],
+                    var_name="Year",
+                    value_name="Vote share %",
+                )
+                party_share_long["Year"] = party_share_long["Year"].replace({
+                    "share_2023": "2023",
+                    "share_2026": party_year_2026,
                 })
 
                 fig2 = px.bar(
@@ -1766,7 +1916,8 @@ with tab66:
                     color="Year",
                     orientation="h",
                     barmode="group",
-                    color_discrete_map={"2023": LIGHT_OG, f"2026 {ver}": ORANGE},
+                    category_orders={"Year": [party_year_2026, "2023"]},
+                    color_discrete_map={"2023": LIGHT_OG, party_year_2026: ORANGE},
                     title=f"Party-List Votes — Top {top_n_66}",
                 )
                 fig2.update_layout(
@@ -1774,7 +1925,7 @@ with tab66:
                     font_color=WHITE, title_font_color=WHITE,
                     xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
                     yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
-                    legend=right_side_legend(),
+                    legend=right_side_legend(traceorder="reversed"),
                     height=500,
                     margin=dict(l=8, r=140, t=54, b=42),
                     hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
@@ -1825,6 +1976,7 @@ with tab66:
                     color="Year",
                     orientation="h",
                     barmode="group",
+                    category_orders={"Year": ["2026", "2023"]},
                     color_discrete_map={"2023": LIGHT_OG, "2026": ORANGE},
                     title="Turnout % by Sub-district",
                 )
@@ -1833,13 +1985,45 @@ with tab66:
                     font_color=WHITE, title_font_color=WHITE,
                     xaxis=dict(gridcolor=GRID, zeroline=False, title="Turnout %", automargin=True),
                     yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
-                    legend=right_side_legend(),
+                    legend=right_side_legend(traceorder="reversed"),
                     height=500,
                     margin=dict(l=8, r=130, t=54, b=42),
                     hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
                 )
                 fig3.update_traces(hovertemplate="%{y}<br>%{fullData.name}: <b>%{x:.2f}%</b><extra></extra>")
                 st.plotly_chart(fig3, width="stretch", config=PLOTLY_CONFIG)
+
+        if not party_share_long.empty:
+            fig4 = px.bar(
+                party_share_long,
+                x="Vote share %",
+                y="Party",
+                color="Year",
+                orientation="h",
+                barmode="group",
+                category_orders={"Year": [party_year_2026, "2023"]},
+                color_discrete_map={"2023": LIGHT_OG, party_year_2026: ORANGE},
+                title=f"Party-List Vote Share — Top {top_n_66}",
+            )
+            fig4.update_layout(
+                plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
+                font_color=WHITE, title_font_color=WHITE,
+                xaxis=dict(
+                    gridcolor=GRID,
+                    zeroline=False,
+                    title="Vote share (%)",
+                    ticksuffix="%",
+                    range=percent_axis_range(party_share_long["Vote share %"]),
+                    automargin=True,
+                ),
+                yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
+                legend=right_side_legend(traceorder="reversed"),
+                height=500,
+                margin=dict(l=8, r=140, t=54, b=42),
+                hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+            )
+            fig4.update_traces(hovertemplate="%{y}<br>%{fullData.name}: <b>%{x:.2f}%</b><extra></extra>")
+            st.plotly_chart(fig4, width="stretch", config=PLOTLY_CONFIG)
 
 
 # ─────────────────────────── TAB 5 · DEMOGRAPHICS ─────────────────────────────
