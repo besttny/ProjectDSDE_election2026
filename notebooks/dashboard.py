@@ -27,6 +27,7 @@ WHITE      = "#F8FAFC"
 LGRAY      = "#A7B0C0"
 MUTED      = "#697386"
 GRID       = "#263041"
+CHART_BG   = "rgba(0,0,0,0)"
 PALETTE    = [ORANGE, TEAL, LIGHT_OG, VIOLET, "#67A6FF",
               "#F87171", "#34D399", "#C084FC", "#FACC15", "#FB7185"]
 
@@ -216,52 +217,16 @@ st.markdown(f"""
       overflow: hidden;
   }}
   div[data-testid="stPlotlyChart"] {{
-      background: rgba(20,24,33,0.78);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.038), rgba(255,255,255,0.018));
+      border: 1px solid rgba(255,255,255,0.085);
       border-radius: 8px;
-      padding: 8px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.16);
-      overflow: visible;
+      padding: 0;
+      box-shadow: none;
+      overflow: hidden;
    }}
-  div[data-testid="stPlotlyChart"] .modebar-container {{
-      top: 0 !important;
-      right: 0 !important;
-      overflow: visible !important;
-      pointer-events: auto !important;
-      z-index: 30 !important;
-   }}
-  div[data-testid="stPlotlyChart"] .modebar {{
-      display: flex !important;
-      top: 10px !important;
-      right: 12px !important;
-      opacity: 0.75 !important;
-      transition: opacity 120ms ease;
-      padding: 2px;
-      border-radius: 7px;
-      background: rgba(20,24,33,0.82);
-      z-index: 20 !important;
-   }}
-  div[data-testid="stPlotlyChart"] .modebar-group {{
-      display: flex !important;
-   }}
-  div[data-testid="stPlotlyChart"]:hover .modebar {{
-      opacity: 1 !important;
-   }}
-  div[data-testid="stPlotlyChart"] .modebar-btn {{
-      opacity: 1 !important;
-      color: {LGRAY} !important;
-   }}
-  div[data-testid="stPlotlyChart"] .modebar-btn svg,
-  div[data-testid="stPlotlyChart"] .modebar-btn path {{
-      fill: {LGRAY} !important;
-      stroke: {LGRAY} !important;
-      opacity: 1 !important;
-   }}
-  div[data-testid="stPlotlyChart"] .modebar-btn:hover svg,
-  div[data-testid="stPlotlyChart"] .modebar-btn:hover path {{
-      fill: {WHITE} !important;
-      stroke: {WHITE} !important;
-   }}
+  div[data-testid="stPlotlyChart"] > div {{
+      border-radius: 8px;
+  }}
   .dashboard-hero {{
       background:
         linear-gradient(135deg, rgba(255,122,61,0.18), rgba(61,214,198,0.08) 54%, rgba(155,140,255,0.10)),
@@ -498,7 +463,7 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
                  color_discrete_sequence=[color])
     x_title = "Votes" if x == "votes" else x.replace("_", " ").title()
     fig.update_layout(
-        plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+        plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
         font_color=WHITE, title_font_color=WHITE,
         title_font=dict(size=18, family="Inter, system-ui, sans-serif"),
         height=height,
@@ -519,6 +484,7 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
 
 
 PLOTLY_CONFIG = {
+    "displayModeBar": False,
     "displaylogo": False,
     "responsive": True,
     "modeBarButtonsToRemove": ["lasso2d", "select2d"],
@@ -723,7 +689,7 @@ with tab1:
                          title="Turnout % by Sub-district",
                          color="pct", color_continuous_scale=[PANEL_BG, ORANGE])
             fig.update_layout(
-                plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+                plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
                 font_color=WHITE, title_font_color=WHITE,
                 coloraxis_showscale=False,
                 xaxis=dict(gridcolor=GRID, title="Turnout %", zeroline=False),
@@ -743,7 +709,7 @@ with tab1:
                           title="Voter Share by District",
                           color_discrete_sequence=PALETTE, hole=0.4)
             fig2.update_layout(
-                plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+                plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
                 font_color=WHITE, title_font_color=WHITE,
                 showlegend=True,
                 legend=dict(
@@ -778,7 +744,7 @@ with tab1:
         fig3 = px.pie(ballot_df, values="Count", names="Type",
                       color_discrete_sequence=[ORANGE, "#555", LIGHT_OG], hole=0.48)
         fig3.update_layout(
-            plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+            plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
             font_color=WHITE,
             title=dict(text="", font=dict(color=WHITE)),
             showlegend=True,
@@ -801,7 +767,9 @@ with tab1:
             textposition="inside",
             textinfo="percent",
         )
-        st.plotly_chart(fig3, width="stretch", config=PLOTLY_CONFIG)
+        _, ballot_col, _ = st.columns([1, 2, 1])
+        with ballot_col:
+            st.plotly_chart(fig3, width="stretch", config=PLOTLY_CONFIG)
 
 
 # ─────────────────────────── TAB 2 · CANDIDATES ───────────────────────────────
@@ -880,7 +848,7 @@ with tab3:
                           title=f"Share — Top {top_n}",
                           color_discrete_sequence=PALETTE, hole=0.35)
             fig2.update_layout(
-                plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+                plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
                 font_color=WHITE, title_font_color=WHITE,
                 showlegend=True,
                 legend=dict(
@@ -955,7 +923,7 @@ with tab4:
         ))
         fig.update_layout(
             barmode="group", title="Split-Ticket Voting — Top 10 Parties",
-            plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+            plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
             font_color=WHITE, title_font_color=WHITE,
             xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
             yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
@@ -1019,12 +987,12 @@ with tab5:
                     color_discrete_sequence=PALETTE,
                     category_orders={
                         "station_size": ["Small", "Medium", "Large"],
-                        "entity_name": top5  # <-- Fix: Forces bars to render highest to lowest
+                        "entity_name": top5
                     },
                 )
 
                 fig.update_layout(
-                    plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+                    plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
                     font_color=WHITE, title_font_color=WHITE,
                     title=dict(text="Top 5 Parties by Station Size", y=0.96, yanchor="top"),
                     xaxis=dict(
@@ -1079,7 +1047,7 @@ with tab6:
         ))
     fig.update_layout(
         barmode="group", title="Constituency Votes — All Versions",
-        plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+        plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
         font_color=WHITE, title_font_color=WHITE,
         xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
         yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
@@ -1114,7 +1082,7 @@ with tab6:
         ))
     fig2.update_layout(
         barmode="group", title="Party-List Votes — Top 10, All Versions",
-        plot_bgcolor=CARD_BG, paper_bgcolor=CARD_BG,
+        plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
         font_color=WHITE, title_font_color=WHITE,
         xaxis=dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True),
         yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
