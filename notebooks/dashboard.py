@@ -30,6 +30,38 @@ GRID       = "#263041"
 CHART_BG   = "rgba(0,0,0,0)"
 PALETTE    = [ORANGE, TEAL, LIGHT_OG, VIOLET, "#67A6FF",
               "#F87171", "#34D399", "#C084FC", "#FACC15", "#FB7185"]
+PARTY_FALLBACK_PALETTE = [
+    "#B8C0CC", "#8BC6D9", "#D9B86C", "#C7A0D8", "#82B29A",
+    "#D9988F", "#A8B8E8", "#E7C6A2", "#9BC8B8", "#C9D36A",
+]
+PARTY_COLORS = {
+    "เพื่อไทย": "#D71920",
+    "ประชาชน": "#F05A28",
+    "ภูมิใจไทย": "#174EA6",
+    "เศรษฐกิจ": "#F5C645",
+    "ใหม่": "#4C88D9",
+    "ประชาธิปัตย์": "#5DB7E5",
+    "เพื่อชาติไทย": "#B71C1C",
+    "รวมไทยสร้างชาติ": "#1F3A8A",
+    "เสรีรวมไทย": "#C7A23A",
+    "ไทยสร้างไทย": "#7B3FB2",
+    "พลังประชารัฐ": "#1F4991",
+    "ไทยภักดี": "#2E7D32",
+    "เป็นธรรม": "#F36C21",
+    "ประชาชาติ": "#7A3E98",
+    "รวมพลังประชาชน": "#2E8B57",
+    "ประชาธิปไตยใหม่": "#1E88E5",
+    "พลังธรรมใหม่": "#009688",
+    "กล้าธรรม": "#2A66B2",
+    "พลังเพื่อไทย": "#D71920",
+    "พลังไทยรักชาติ": "#F2C94C",
+    "ครูไทยเพื่อประชาชน": "#F0A9B8",
+    "ประชากรไทย": "#7EC8E3",
+    "ไทยก้าวใหม่": "#2A9D8F",
+    "ไทยก้าวหน้า": "#2A9D8F",
+    "ทางเลือกใหม่": "#3157A4",
+    "โอกาสใหม่": "#F5D76E",
+}
 
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown(f"""
@@ -503,6 +535,34 @@ def styled_bar(df, x, y, title, color=ORANGE, height=400):
     return fig
 
 
+def fallback_party_color(name):
+    value = str(name)
+    idx = sum(ord(ch) for ch in value) % len(PARTY_FALLBACK_PALETTE)
+    return PARTY_FALLBACK_PALETTE[idx]
+
+
+def party_color(name):
+    value = str(name).strip()
+    return PARTY_COLORS.get(value, fallback_party_color(value))
+
+
+def party_colors(names):
+    return [party_color(name) for name in names]
+
+
+def party_color_map(names):
+    return {
+        str(name): party_color(name)
+        for name in pd.Series(names).dropna().unique()
+    }
+
+
+def styled_party_bar(df, x, y, title, height=400):
+    fig = styled_bar(df, x, y, title, color=LIGHT_OG, height=height)
+    fig.update_traces(marker_color=party_colors(df[y]))
+    return fig
+
+
 PLOTLY_CONFIG = {
     "displayModeBar": False,
     "displaylogo": False,
@@ -858,15 +918,19 @@ with tab3:
     else:
         col_a, col_b = st.columns([3, 2])
         with col_a:
-            fig = styled_bar(party_top, "votes", "entity_name",
-                             f"Party-List Votes — Top {top_n} ({ver})",
-                             color=LIGHT_OG, height=420)
+            fig = styled_party_bar(
+                party_top, "votes", "entity_name",
+                f"Party-List Votes — Top {top_n} ({ver})",
+                height=420,
+            )
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
         with col_b:
             fig2 = px.pie(party_top, values="votes", names="entity_name",
                           title=f"Share — Top {top_n}",
-                          color_discrete_sequence=PALETTE, hole=0.35)
+                          color="entity_name",
+                          color_discrete_map=party_color_map(party_top["entity_name"]),
+                          hole=0.35)
             fig2.update_layout(
                 plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG,
                 font_color=WHITE, title_font_color=WHITE,
@@ -1004,7 +1068,7 @@ with tab5:
                 fig = px.bar(
                     pivot, x="station_size", y="votes", color="entity_name",
                     barmode="group", title="Top 5 Parties by Station Size",
-                    color_discrete_sequence=PALETTE,
+                    color_discrete_map=party_color_map(pivot["entity_name"]),
                     category_orders={
                         "station_size": ["Small", "Medium", "Large"],
                         "entity_name": top5
