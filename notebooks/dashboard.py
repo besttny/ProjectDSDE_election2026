@@ -1136,6 +1136,448 @@ def build_map_figure(map_df, geojson, area_level, metric):
     return fig
 
 
+def robust_zscore(series):
+    values = pd.to_numeric(series, errors="coerce")
+    median = values.median()
+    mad = (values - median).abs().median()
+    if pd.isna(median):
+        return pd.Series(0.0, index=series.index)
+    if pd.isna(mad) or mad == 0:
+        std = values.std(ddof=0)
+        if pd.isna(std) or std == 0:
+            return pd.Series(0.0, index=series.index)
+        return ((values - median) / std).fillna(0.0)
+    return (0.6745 * (values - median) / mad).fillna(0.0)
+
+
+def station_analysis_base(stations):
+    if stations.empty:
+        return pd.DataFrame(columns=[
+            "station_code", "station_no", "district", "subdistrict",
+            "eligible_voters", "voters_present", "ballots_used",
+            "ballots_spoiled", "ballots_no_vote", "turnout_pct",
+            "spoiled_pct", "no_vote_pct", "validation_flags",
+        ])
+
+    base = (
+        stations.groupby("station_code", dropna=False)
+        .agg(
+            station_no=("station_no", "first"),
+            district=("district", "first"),
+            subdistrict=("subdistrict", "first"),
+            eligible_voters=("eligible_voters", "sum"),
+            voters_present=("voters_present", "sum"),
+            ballots_used=("ballots_used", "sum"),
+            ballots_spoiled=("ballots_spoiled", "sum"),
+            ballots_no_vote=("ballots_no_vote", "sum"),
+            validation_flags=("validation_flags", lambda s: "; ".join(sorted(set(s.dropna().astype(str))))),
+        )
+        .reset_index()
+    )
+    base["turnout_pct"] = np.where(
+        base["eligible_voters"].gt(0),
+        base["voters_present"] / base["eligible_voters"] * 100,
+        np.nan,
+    )
+    base["spoiled_pct"] = np.where(
+        base["ballots_used"].gt(0),
+        base["ballots_spoiled"] / base["ballots_used"] * 100,
+        np.nan,
+    )
+    base["no_vote_pct"] = np.where(
+        base["ballots_used"].gt(0),
+        base["ballots_no_vote"] / base["ballots_used"] * 100,
+        np.nan,
+    )
+    return base
+
+
+def station_candidate_strength(candidate_votes):
+    columns = [
+        "station_code", "winner_candidate", "winner_party", "winner_votes",
+        "runner_up_candidate", "runner_up_votes", "candidate_total_votes",
+        "winner_share_pct", "margin_pct",
+    ]
+    if candidate_votes.empty:
+        return pd.DataFrame(columns=columns)
+
+    grouped = (
+        candidate_votes.groupby(["station_code", "entity_name", "party_name"], dropna=False)["votes"]
+        .sum()
+        .reset_index()
+        .sort_values(["station_code", "votes"], ascending=[True, False])
+    )
+    grouped["rank"] = grouped.groupby("station_code").cumcount() + 1
+    totals = grouped.groupby("station_code")["votes"].sum().reset_index(name="candidate_total_votes")
+    winners = (
+        grouped[grouped["rank"] == 1]
+        .rename(columns={
+            "entity_name": "winner_candidate",
+            "party_name": "winner_party",
+            "votes": "winner_votes",
+        })[["station_code", "winner_candidate", "winner_party", "winner_votes"]]
+    )
+    runners = (
+        grouped[grouped["rank"] == 2]
+        .rename(columns={
+            "entity_name": "runner_up_candidate",
+            "votes": "runner_up_votes",
+        })[["station_code", "runner_up_candidate", "runner_up_votes"]]
+    )
+    result = totals.merge(winners, on="station_code", how="left").merge(runners, on="station_code", how="left")
+    result["runner_up_candidate"] = result["runner_up_candidate"].fillna("No runner-up")
+    result["runner_up_votes"] = result["runner_up_votes"].fillna(0)
+    result["winner_share_pct"] = np.where(
+        result["candidate_total_votes"].gt(0),
+        result["winner_votes"] / result["candidate_total_votes"] * 100,
+        np.nan,
+    )
+    result["margin_pct"] = np.where(
+        result["candidate_total_votes"].gt(0),
+        (result["winner_votes"] - result["runner_up_votes"]) / result["candidate_total_votes"] * 100,
+        np.nan,
+    )
+    return result[columns]
+
+
+def station_split_gap(candidate_votes, party_votes):
+    columns = [
+        "station_code", "split_party", "candidate_share_pct",
+        "party_list_share_pct", "split_gap_pp", "split_abs_gap_pp",
+    ]
+    if candidate_votes.empty or party_votes.empty:
+        return pd.DataFrame(columns=columns)
+
+    cand = (
+        candidate_votes.dropna(subset=["party_name"])
+        .groupby(["station_code", "party_name"], as_index=False)["votes"]
+        .sum()
+        .rename(columns={"votes": "candidate_votes"})
+    )
+    party = (
+        party_votes.groupby(["station_code", "entity_name"], as_index=False)["votes"]
+        .sum()
+        .rename(columns={"entity_name": "party_name", "votes": "party_list_votes"})
+    )
+    if cand.empty or party.empty:
+        return pd.DataFrame(columns=columns)
+
+    cand_total = cand.groupby("station_code")["candidate_votes"].sum().reset_index(name="candidate_total")
+    party_total = party.groupby("station_code")["party_list_votes"].sum().reset_index(name="party_total")
+    split = (
+        cand.merge(party, on=["station_code", "party_name"], how="outer")
+        .fillna({"candidate_votes": 0, "party_list_votes": 0})
+        .merge(cand_total, on="station_code", how="left")
+        .merge(party_total, on="station_code", how="left")
+    )
+    split["candidate_share_pct"] = np.where(
+        split["candidate_total"].gt(0),
+        split["candidate_votes"] / split["candidate_total"] * 100,
+        0.0,
+    )
+    split["party_list_share_pct"] = np.where(
+        split["party_total"].gt(0),
+        split["party_list_votes"] / split["party_total"] * 100,
+        0.0,
+    )
+    split["split_gap_pp"] = split["candidate_share_pct"] - split["party_list_share_pct"]
+    split["split_abs_gap_pp"] = split["split_gap_pp"].abs()
+    return (
+        split.sort_values(["station_code", "split_abs_gap_pp"], ascending=[True, False])
+        .groupby("station_code", as_index=False)
+        .head(1)
+        .rename(columns={"party_name": "split_party"})[columns]
+    )
+
+
+def build_station_anomaly(stations, candidate_votes, party_votes):
+    base = station_analysis_base(stations)
+    if base.empty:
+        return base
+
+    result = (
+        base.merge(station_candidate_strength(candidate_votes), on="station_code", how="left")
+        .merge(station_split_gap(candidate_votes, party_votes), on="station_code", how="left")
+    )
+    for col in ["winner_share_pct", "margin_pct", "split_abs_gap_pp"]:
+        result[col] = result[col].fillna(0.0)
+
+    feature_labels = {
+        "turnout_pct": "turnout",
+        "spoiled_pct": "spoiled ballots",
+        "no_vote_pct": "no-vote",
+        "winner_share_pct": "winner share",
+        "margin_pct": "victory margin",
+        "split_abs_gap_pp": "split-ticket gap",
+    }
+    weights = {
+        "turnout_pct": 0.20,
+        "spoiled_pct": 0.13,
+        "no_vote_pct": 0.10,
+        "winner_share_pct": 0.18,
+        "margin_pct": 0.17,
+        "split_abs_gap_pp": 0.22,
+    }
+
+    weighted_score = pd.Series(0.0, index=result.index)
+    for col, weight in weights.items():
+        z_col = f"z_{col}"
+        result[z_col] = robust_zscore(result[col]).abs().clip(upper=4)
+        weighted_score += result[z_col] * weight
+
+    result["review_score"] = (weighted_score / 4 * 100).clip(0, 100)
+    result["review_level"] = pd.cut(
+        result["review_score"],
+        bins=[-0.01, 35, 55, 75, 100],
+        labels=["Normal", "Watch", "Review", "High"],
+    ).astype(str)
+
+    def reason(row):
+        reasons = [
+            label
+            for col, label in feature_labels.items()
+            if row.get(f"z_{col}", 0) >= 2
+        ]
+        if reasons:
+            return ", ".join(reasons)
+        return "overall pattern"
+
+    result["review_reason"] = result.apply(reason, axis=1)
+    return result.sort_values("review_score", ascending=False).reset_index(drop=True)
+
+
+def aggregate_anomaly_area(anomaly_df, area_level):
+    if anomaly_df.empty:
+        return pd.DataFrame(columns=[
+            "area_key", "district", "subdistrict", "stations",
+            "flagged_stations", "max_review_score", "avg_review_score",
+        ])
+    keyed = add_area_key(anomaly_df, area_level)
+    grouped = (
+        keyed.groupby("area_key")
+        .agg(
+            district=("district", "first"),
+            subdistrict=("subdistrict", "first"),
+            stations=("station_code", "nunique"),
+            flagged_stations=("review_score", lambda s: int((s >= 55).sum())),
+            max_review_score=("review_score", "max"),
+            avg_review_score=("review_score", "mean"),
+        )
+        .reset_index()
+    )
+    return grouped
+
+
+def build_area_metric_map(area_df, geojson, area_level, color_col, title, colorbar_title, color_scale=None, midpoint=None):
+    geo_df = geojson_area_frame(geojson, area_level)
+    area_values = area_df.copy()
+    for col in ["district", "subdistrict", "area_name"]:
+        if col in area_values.columns:
+            area_values = area_values.drop(columns=col)
+    map_df = geo_df.merge(area_values, on="area_key", how="left")
+    for col in ["stations", "flagged_stations"]:
+        if col not in map_df.columns:
+            map_df[col] = 0
+    for col in [color_col, "stations", "flagged_stations", "max_review_score", "avg_review_score"]:
+        if col in map_df.columns:
+            map_df[col] = pd.to_numeric(map_df[col], errors="coerce").fillna(0)
+    if color_scale is None:
+        color_scale = [PANEL_BG, LIGHT_OG, ORANGE]
+
+    fig = px.choropleth_map(
+        map_df,
+        geojson=filter_geojson_features(geojson, map_df["area_key"]),
+        locations="area_key",
+        featureidkey="properties.area_key",
+        color=color_col,
+        color_continuous_scale=color_scale,
+        color_continuous_midpoint=midpoint,
+        hover_name="area_name",
+        hover_data={
+            "area_key": False,
+            "district": True,
+            "subdistrict": area_level == "Sub-district",
+            color_col: ":.2f",
+            "stations": ":,.0f" if "stations" in map_df.columns else False,
+            "flagged_stations": ":,.0f" if "flagged_stations" in map_df.columns else False,
+        },
+        map_style="dark",
+        center={"lat": 15.74, "lon": 101.92},
+        zoom=8.0 if area_level == "District" else 8.4,
+        opacity=0.84,
+        title=title,
+    )
+    fig.update_traces(marker_line_color="rgba(255,255,255,0.42)", marker_line_width=1)
+    fig.update_layout(
+        paper_bgcolor=CHART_BG,
+        plot_bgcolor=CHART_BG,
+        font_color=WHITE,
+        title_font_color=WHITE,
+        height=560,
+        margin=dict(l=8, r=8, t=54, b=8),
+        coloraxis_colorbar=dict(title=colorbar_title),
+        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+        map=dict(style="dark", center={"lat": 15.74, "lon": 101.92}, zoom=8.0 if area_level == "District" else 8.4),
+    )
+    return fig, map_df
+
+
+def prepare_party_area_index(candidate_votes, party_votes, area_level):
+    columns = [
+        "area_key", "district", "subdistrict", "party_name",
+        "candidate_votes", "party_list_votes", "candidate_share_pct",
+        "party_list_share_pct", "personal_vote_index_pp",
+        "abs_personal_vote_index_pp", "gap_votes",
+    ]
+    if candidate_votes.empty or party_votes.empty:
+        return pd.DataFrame(columns=columns)
+
+    cand = add_area_key(candidate_votes.dropna(subset=["party_name"]), area_level)
+    plist = add_area_key(party_votes, area_level)
+    cand = (
+        cand.groupby(["area_key", "district", "subdistrict", "party_name"], as_index=False)["votes"]
+        .sum()
+        .rename(columns={"votes": "candidate_votes"})
+    )
+    plist = (
+        plist.groupby(["area_key", "district", "subdistrict", "entity_name"], as_index=False)["votes"]
+        .sum()
+        .rename(columns={"entity_name": "party_name", "votes": "party_list_votes"})
+    )
+    if cand.empty and plist.empty:
+        return pd.DataFrame(columns=columns)
+
+    result = (
+        cand.merge(plist, on=["area_key", "district", "subdistrict", "party_name"], how="outer")
+        .fillna({"candidate_votes": 0, "party_list_votes": 0})
+    )
+    result["candidate_total"] = result.groupby("area_key")["candidate_votes"].transform("sum")
+    result["party_list_total"] = result.groupby("area_key")["party_list_votes"].transform("sum")
+    result["candidate_share_pct"] = np.where(
+        result["candidate_total"].gt(0),
+        result["candidate_votes"] / result["candidate_total"] * 100,
+        0.0,
+    )
+    result["party_list_share_pct"] = np.where(
+        result["party_list_total"].gt(0),
+        result["party_list_votes"] / result["party_list_total"] * 100,
+        0.0,
+    )
+    result["personal_vote_index_pp"] = result["candidate_share_pct"] - result["party_list_share_pct"]
+    result["abs_personal_vote_index_pp"] = result["personal_vote_index_pp"].abs()
+    result["gap_votes"] = result["candidate_votes"] - result["party_list_votes"]
+    return result[columns]
+
+
+def prepare_party_index_overall(candidate_votes, party_votes):
+    area = prepare_party_area_index(candidate_votes, party_votes, "District")
+    if area.empty:
+        return area
+    overall = (
+        area.groupby("party_name", as_index=False)
+        .agg(candidate_votes=("candidate_votes", "sum"), party_list_votes=("party_list_votes", "sum"))
+    )
+    candidate_total = overall["candidate_votes"].sum()
+    party_total = overall["party_list_votes"].sum()
+    overall["candidate_share_pct"] = np.where(
+        candidate_total > 0,
+        overall["candidate_votes"] / candidate_total * 100,
+        0.0,
+    )
+    overall["party_list_share_pct"] = np.where(
+        party_total > 0,
+        overall["party_list_votes"] / party_total * 100,
+        0.0,
+    )
+    overall["personal_vote_index_pp"] = overall["candidate_share_pct"] - overall["party_list_share_pct"]
+    overall["abs_personal_vote_index_pp"] = overall["personal_vote_index_pp"].abs()
+    overall["gap_votes"] = overall["candidate_votes"] - overall["party_list_votes"]
+    return overall.sort_values("abs_personal_vote_index_pp", ascending=False)
+
+
+def prepare_current_area_hotspots(stations, candidate_votes, party_votes, area_level, selected_party):
+    station_summary = aggregate_station_map(stations, area_level)
+    vote_summary = aggregate_vote_map(candidate_votes, area_level, "Constituency")
+    result = station_summary.merge(vote_summary, on="area_key", how="outer")
+    if selected_party and not party_votes.empty:
+        party_keyed = add_area_key(party_votes, area_level)
+        party_grouped = (
+            party_keyed.groupby(["area_key", "entity_name"], as_index=False)["votes"]
+            .sum()
+        )
+        totals = party_grouped.groupby("area_key")["votes"].sum().reset_index(name="party_total_votes")
+        selected = (
+            party_grouped[party_grouped["entity_name"] == selected_party]
+            .rename(columns={"votes": "selected_party_votes"})[["area_key", "selected_party_votes"]]
+        )
+        result = result.merge(totals, on="area_key", how="left").merge(selected, on="area_key", how="left")
+        result["selected_party_votes"] = result["selected_party_votes"].fillna(0)
+        result["party_total_votes"] = result["party_total_votes"].fillna(0)
+        result["selected_party_share_pct"] = np.where(
+            result["party_total_votes"].gt(0),
+            result["selected_party_votes"] / result["party_total_votes"] * 100,
+            0.0,
+        )
+    else:
+        result["selected_party_share_pct"] = 0.0
+    return result
+
+
+def prepare_party_swing(current_party_votes, election66_data, area_level, district, subdistrict):
+    columns = [
+        "area_key", "district", "subdistrict", "compare_party",
+        "votes_2023", "votes_2026", "share_2023", "share_2026", "swing_pp",
+    ]
+    e66 = election66_data["party_area_long"]
+    if current_party_votes.empty or e66.empty:
+        return pd.DataFrame(columns=columns)
+
+    current = add_area_key(current_party_votes, area_level)
+    if current.empty:
+        return pd.DataFrame(columns=columns)
+    current["compare_party"] = party_compare_key(current["entity_name"])
+    current_grouped = (
+        current.groupby(["area_key", "district", "subdistrict", "compare_party"], as_index=False)["votes"]
+        .sum()
+        .rename(columns={"votes": "votes_2026"})
+    )
+    current_grouped["total_2026"] = current_grouped.groupby("area_key")["votes_2026"].transform("sum")
+    current_grouped["share_2026"] = np.where(
+        current_grouped["total_2026"].gt(0),
+        current_grouped["votes_2026"] / current_grouped["total_2026"] * 100,
+        0.0,
+    )
+
+    past = filter_election66_area(e66, district, subdistrict)
+    if past.empty:
+        return pd.DataFrame(columns=columns)
+    past = add_area_key(past, area_level)
+    past["compare_party"] = party_compare_key(past["party_name"])
+    past_grouped = (
+        past.groupby(["area_key", "district", "subdistrict", "compare_party"], as_index=False)["votes"]
+        .sum()
+        .rename(columns={"votes": "votes_2023"})
+    )
+    past_grouped["total_2023"] = past_grouped.groupby("area_key")["votes_2023"].transform("sum")
+    past_grouped["share_2023"] = np.where(
+        past_grouped["total_2023"].gt(0),
+        past_grouped["votes_2023"] / past_grouped["total_2023"] * 100,
+        0.0,
+    )
+
+    result = (
+        past_grouped[["area_key", "district", "subdistrict", "compare_party", "votes_2023", "share_2023"]]
+        .merge(
+            current_grouped[["area_key", "district", "subdistrict", "compare_party", "votes_2026", "share_2026"]],
+            on=["area_key", "district", "subdistrict", "compare_party"],
+            how="outer",
+        )
+        .fillna({"votes_2023": 0, "share_2023": 0, "votes_2026": 0, "share_2026": 0})
+    )
+    result["swing_pp"] = result["share_2026"] - result["share_2023"]
+    return result[columns]
+
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
@@ -1278,9 +1720,9 @@ st.markdown(f"""
 st.divider()
 
 # ── Tabs ───────────────────────────────────────────────────────────────────────
-tab_map, tab1, tab2, tab3, tab4, tab66, tab5, tab6, tab7, tab8 = st.tabs([
+tab_map, tab1, tab2, tab3, tab4, tab66, tab_adv, tab5, tab6, tab7, tab8 = st.tabs([
     "Map", "Turnout", "Candidates", "Parties", "Split Vote",
-    "2023 Compare", "Station Size", "Versions", "Quality", "Missing"
+    "2023 Compare", "Advanced Insights", "Station Size", "Versions", "Quality", "Missing"
 ])
 
 
