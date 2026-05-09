@@ -193,18 +193,38 @@ st.markdown(f"""
   h2, h3 {{ margin-top: 0.7rem !important; }}
   /* Sidebar select labels */
   .stSelectbox > label, .stSlider > label {{ color: {LGRAY} !important; }}
-  div[data-baseweb="select"] > div {{
+  div[data-baseweb="select"] > div,
+  div[data-baseweb="select"] > div:hover,
+  div[data-baseweb="select"] > div:focus,
+  div[data-baseweb="select"] > div:focus-within {{
       background: rgba(255,255,255,0.045);
-      border-color: var(--border);
+      border-color: var(--border) !important;
       border-radius: 8px;
+      outline: none !important;
+      box-shadow: none !important;
   }}
   div[data-baseweb="select"] input {{
       caret-color: transparent !important;
       cursor: pointer !important;
+      outline: none !important;
+      box-shadow: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+  }}
+  div[data-baseweb="select"] input::selection {{
+      background: transparent !important;
+      color: inherit !important;
+  }}
+  div[data-baseweb="select"] [role="combobox"],
+  div[data-baseweb="select"] [role="combobox"]:focus,
+  div[data-baseweb="select"] [role="combobox"]:focus-visible,
+  div[data-baseweb="select"] [aria-expanded="true"] {{
+      outline: none !important;
+      box-shadow: none !important;
+      border-color: var(--border) !important;
   }}
   button:focus-visible,
-  [role="tab"]:focus-visible,
-  div[data-baseweb="select"] [role="combobox"]:focus-visible {{
+  [role="tab"]:focus-visible {{
       outline: 2px solid rgba(255,122,61,0.78) !important;
       outline-offset: 2px !important;
       box-shadow: 0 0 0 4px rgba(255,122,61,0.12) !important;
