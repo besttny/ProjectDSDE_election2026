@@ -831,13 +831,13 @@ def build_map_figure(map_df, geojson, area_level, metric):
         "stations": ":,.0f",
         "eligible_voters": ":,.0f",
         "voters_present": ":,.0f",
-        "turnout_pct": ":.1f",
+        "turnout_pct": ":.2f",
         "winner": True,
         "winner_votes": ":,.0f",
         "runner_up": True,
         "runner_up_votes": ":,.0f",
         "margin_votes": ":,.0f",
-        "margin_pct": ":.1f",
+        "margin_pct": ":.2f",
         "total_votes": ":,.0f",
     }
 
@@ -969,8 +969,8 @@ with st.sidebar:
     st.markdown(f"""
     <div class='sidebar-card'>
       <strong>OCR Coverage</strong><br>
-      Constituency&nbsp;&nbsp;{cov_c:.1f}%<br>
-      Party-list&nbsp;&nbsp;&nbsp;&nbsp;{cov_p:.1f}%<br>
+      Constituency&nbsp;&nbsp;{cov_c:.2f}%<br>
+      Party-list&nbsp;&nbsp;&nbsp;&nbsp;{cov_p:.2f}%<br>
       Stations&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{len(station_df)} / 341
     </div>
     """, unsafe_allow_html=True)
@@ -1194,7 +1194,7 @@ with tab1:
                 margin=dict(l=10, r=14, t=54, b=58),
                 hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
             )
-            fig.update_traces(hovertemplate="%{y}: <b>%{x:.1f}%</b>")
+            fig.update_traces(hovertemplate="%{y}: <b>%{x:.2f}%</b>")
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
         with col_b:
@@ -1225,7 +1225,8 @@ with tab1:
             fig2.update_traces(
                 domain=dict(x=[0.08, 0.92], y=[0.22, 0.96]),
                 textposition="inside",
-                textinfo="percent",
+                texttemplate="%{percent:.2%}",
+                hovertemplate="%{label}: <b>%{percent:.2%}</b><extra></extra>",
             )
             st.plotly_chart(fig2, width="stretch", config=PLOTLY_CONFIG)
 
@@ -1261,7 +1262,8 @@ with tab1:
         fig3.update_traces(
             domain=dict(x=[0.08, 0.92], y=[0.16, 0.98]),
             textposition="inside",
-            textinfo="percent",
+            texttemplate="%{percent:.2%}",
+            hovertemplate="%{label}: <b>%{percent:.2%}</b><br>Count: %{value:,.0f}<extra></extra>",
         )
         _, ballot_col, _ = st.columns([1, 2, 1])
         with ballot_col:
@@ -1303,7 +1305,7 @@ with tab2:
                   <div style='color:{ORANGE}; font-size:1.58rem;
                               font-weight:820'>{margin:,}</div>
                   <div style='color:{LGRAY}; font-size:0.78rem'>
-                    {margin/total*100:.1f}% of total votes
+                    {margin/total*100:.2f}% of total votes
                   </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1369,7 +1371,8 @@ with tab3:
             fig2.update_traces(
                 domain=dict(x=[0.06, 0.94], y=[0.26, 0.96]),
                 textposition="inside",
-                textinfo="percent",
+                texttemplate="%{percent:.2%}",
+                hovertemplate="%{label}: <b>%{percent:.2%}</b><br>Votes: %{value:,.0f}<extra></extra>",
                 insidetextorientation="radial",
             )
             st.plotly_chart(fig2, width="stretch", config=PLOTLY_CONFIG)
@@ -1595,9 +1598,9 @@ with tab6:
     # ── Accuracy table ──
     st.subheader("OCR Accuracy vs Ground Truth")
     acc = comp_c.copy()
-    acc["V1 acc %"] = (acc["V1"] / acc["V3"] * 100).round(1)
-    acc["V2 acc %"] = (acc["V2"] / acc["V3"] * 100).round(1)
-    acc["V4 acc %"] = (acc["V4"] / acc["V3"] * 100).round(1)
+    acc["V1 acc %"] = (acc["V1"] / acc["V3"] * 100).round(2)
+    acc["V2 acc %"] = (acc["V2"] / acc["V3"] * 100).round(2)
+    acc["V4 acc %"] = (acc["V4"] / acc["V3"] * 100).round(2)
     st.dataframe(
         acc[["entity_name", "V1", "V2", "V3", "V4", "V1 acc %", "V2 acc %", "V4 acc %"]]
         .rename(columns={"entity_name": "Candidate"}),
@@ -1606,9 +1609,9 @@ with tab6:
 
     col_a, col_b = st.columns(2)
     col_a.metric("Constituency OCR Coverage",
-                 f"{f_v['votes'].sum() / ref_cand_total * 100:.1f}%")
+                 f"{f_v['votes'].sum() / ref_cand_total * 100:.2f}%")
     col_b.metric("Party-List OCR Coverage",
-                 f"{f_pv['votes'].sum() / ref_party_total * 100:.1f}%")
+                 f"{f_pv['votes'].sum() / ref_party_total * 100:.2f}%")
 
 
 # ─────────────────────────── TAB 7 · DATA QUALITY ─────────────────────────────
