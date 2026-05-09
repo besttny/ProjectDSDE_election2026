@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -199,6 +200,19 @@ st.markdown(f"""
   .stSlider,
   .stSlider * {{
       cursor: pointer !important;
+  }}
+  [data-testid="stSelectbox"] div[data-baseweb="select"],
+  [data-testid="stSelectbox"] div[data-baseweb="select"] *,
+  div[data-baseweb="select"],
+  div[data-baseweb="select"] *,
+  div[data-baseweb="popover"] [role="listbox"],
+  div[data-baseweb="popover"] [role="option"],
+  div[data-baseweb="popover"] [role="option"] * {{
+      cursor: pointer !important;
+  }}
+  [data-testid="stSelectbox"] label,
+  [data-testid="stSelectbox"] label * {{
+      cursor: default !important;
   }}
   section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
   section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
@@ -480,6 +494,8 @@ st.html(
 BASE     = Path(__file__).resolve().parent.parent
 CLEAN    = BASE / "data" / "clean_data"
 EXTERNAL = BASE / "data" / "external"
+DISTRICT_GEOJSON = EXTERNAL / "chaiyaphum_2_districts.geojson"
+SUBDISTRICT_GEOJSON = EXTERNAL / "chaiyaphum_2_subdistricts.geojson"
 
 
 # ── Loaders ────────────────────────────────────────────────────────────────────
@@ -632,6 +648,291 @@ def apply_geo_filter(s_df, v_df, pv_df, ps_df, district, subdistrict):
     return s_df, v_df, pv_df, ps_df
 
 
+@st.cache_data
+def load_geojson(path: str):
+    with open(path, encoding="utf-8") as file:
+        return json.load(file)
+
+
+def geojson_area_frame(geojson, area_level):
+    rows = []
+    for feature in geojson.get("features", []):
+        props = feature.get("properties", {})
+        district = props.get("district") or props.get("NAME2") or props.get("AMPHOE_T")
+        subdistrict = props.get("subdistrict") or props.get("NAME3")
+        if area_level == "District":
+            area_key = props.get("area_key") or district
+            area_name = district
+        else:
+            area_key = props.get("area_key") or f"{district}||{subdistrict}"
+            area_name = subdistrict
+        rows.append({
+            "area_key": area_key,
+            "area_name": area_name,
+            "district": district,
+            "subdistrict": subdistrict,
+        })
+    return pd.DataFrame(rows)
+
+
+def filter_geojson_features(geojson, area_keys):
+    key_set = set(pd.Series(area_keys).dropna().astype(str))
+    return {
+        **{k: v for k, v in geojson.items() if k != "features"},
+        "features": [
+            feature
+            for feature in geojson.get("features", [])
+            if str(feature.get("properties", {}).get("area_key")) in key_set
+        ],
+    }
+
+
+def add_area_key(df, area_level):
+    keyed = df.copy()
+    if keyed.empty:
+        keyed["area_key"] = pd.Series(dtype="string")
+        return keyed
+    if area_level == "District":
+        keyed["area_key"] = keyed["district"].astype(str)
+    else:
+        keyed["area_key"] = keyed["district"].astype(str) + "||" + keyed["subdistrict"].astype(str)
+    return keyed
+
+
+def aggregate_station_map(stations, area_level):
+    stations = add_area_key(stations, area_level)
+    if stations.empty:
+        return pd.DataFrame(columns=[
+            "area_key", "stations", "eligible_voters", "voters_present", "turnout_pct"
+        ])
+    summary = (
+        stations.groupby("area_key")
+        .agg(
+            stations=("station_code", "nunique"),
+            eligible_voters=("eligible_voters", "sum"),
+            voters_present=("voters_present", "sum"),
+        )
+        .reset_index()
+    )
+    summary["turnout_pct"] = np.where(
+        summary["eligible_voters"].gt(0),
+        summary["voters_present"] / summary["eligible_voters"] * 100,
+        np.nan,
+    )
+    return summary
+
+
+def aggregate_vote_map(votes, area_level, vote_type):
+    columns = [
+        "area_key", "total_votes", "winner", "winner_party", "winner_votes",
+        "runner_up", "runner_up_votes", "margin_votes", "margin_pct",
+    ]
+    votes = add_area_key(votes, area_level)
+    if votes.empty:
+        return pd.DataFrame(columns=columns)
+
+    if vote_type == "Constituency":
+        grouped = (
+            votes.groupby(["area_key", "entity_name", "party_name"], dropna=False)["votes"]
+            .sum()
+            .reset_index()
+        )
+        grouped["party_for_color"] = grouped["party_name"].fillna(grouped["entity_name"])
+        grouped["choice_label"] = np.where(
+            grouped["party_name"].notna(),
+            grouped["entity_name"].astype(str) + " (" + grouped["party_name"].astype(str) + ")",
+            grouped["entity_name"].astype(str),
+        )
+    else:
+        grouped = (
+            votes.groupby(["area_key", "entity_name"], dropna=False)["votes"]
+            .sum()
+            .reset_index()
+        )
+        grouped["party_for_color"] = grouped["entity_name"]
+        grouped["choice_label"] = grouped["entity_name"].astype(str)
+
+    grouped = grouped.sort_values(["area_key", "votes"], ascending=[True, False])
+    top_two = grouped.groupby("area_key", as_index=False).head(2).copy()
+    top_two["rank"] = top_two.groupby("area_key").cumcount() + 1
+
+    winners = (
+        top_two[top_two["rank"] == 1]
+        .rename(columns={
+            "choice_label": "winner",
+            "party_for_color": "winner_party",
+            "votes": "winner_votes",
+        })
+        [["area_key", "winner", "winner_party", "winner_votes"]]
+    )
+    runners = (
+        top_two[top_two["rank"] == 2]
+        .rename(columns={
+            "choice_label": "runner_up",
+            "votes": "runner_up_votes",
+        })
+        [["area_key", "runner_up", "runner_up_votes"]]
+    )
+    totals = grouped.groupby("area_key")["votes"].sum().reset_index(name="total_votes")
+
+    result = (
+        totals.merge(winners, on="area_key", how="left")
+        .merge(runners, on="area_key", how="left")
+    )
+    result["runner_up"] = result["runner_up"].fillna("No runner-up")
+    result["runner_up_votes"] = result["runner_up_votes"].fillna(0)
+    result["margin_votes"] = result["winner_votes"] - result["runner_up_votes"]
+    result["margin_pct"] = np.where(
+        result["total_votes"].gt(0),
+        result["margin_votes"] / result["total_votes"] * 100,
+        np.nan,
+    )
+    return result[columns]
+
+
+def prepare_map_data(stations, votes, geojson, area_level, district, subdistrict, vote_type):
+    geo_df = geojson_area_frame(geojson, area_level)
+    if district != "All":
+        geo_df = geo_df[geo_df["district"] == district]
+    if area_level == "Sub-district" and subdistrict != "All":
+        geo_df = geo_df[geo_df["subdistrict"] == subdistrict]
+
+    station_summary = aggregate_station_map(stations, area_level)
+    vote_summary = aggregate_vote_map(votes, area_level, vote_type)
+
+    map_df = (
+        geo_df.merge(station_summary, on="area_key", how="left")
+        .merge(vote_summary, on="area_key", how="left")
+    )
+    map_df["stations"] = map_df["stations"].fillna(0).astype(int)
+    for col in ["eligible_voters", "voters_present", "total_votes", "winner_votes", "runner_up_votes", "margin_votes"]:
+        map_df[col] = map_df[col].fillna(0)
+    map_df["winner"] = map_df["winner"].fillna("No vote rows in current scope")
+    map_df["winner_party"] = map_df["winner_party"].fillna("No data")
+    map_df["runner_up"] = map_df["runner_up"].fillna("No vote rows")
+    map_df["winner_party_display"] = map_df["winner_party"]
+    map_df["has_votes"] = map_df["total_votes"].gt(0)
+    return map_df
+
+
+def build_map_figure(map_df, geojson, area_level, metric):
+    visible_geojson = filter_geojson_features(geojson, map_df["area_key"])
+    center = {"lat": 15.74, "lon": 101.92}
+    zoom = 8.0 if area_level == "District" else 8.4
+    base_hover = {
+        "area_key": False,
+        "winner_party": False,
+        "winner_party_display": False,
+        "has_votes": False,
+        "district": True,
+        "subdistrict": area_level == "Sub-district",
+        "stations": ":,.0f",
+        "eligible_voters": ":,.0f",
+        "voters_present": ":,.0f",
+        "turnout_pct": ":.1f",
+        "winner": True,
+        "winner_votes": ":,.0f",
+        "runner_up": True,
+        "runner_up_votes": ":,.0f",
+        "margin_votes": ":,.0f",
+        "margin_pct": ":.1f",
+        "total_votes": ":,.0f",
+    }
+
+    if metric == "Winner":
+        color_map = {
+            name: party_color(name)
+            for name in map_df["winner_party_display"].dropna().unique()
+            if name != "No data"
+        }
+        color_map["No data"] = MUTED
+        fig = px.choropleth_map(
+            map_df,
+            geojson=visible_geojson,
+            locations="area_key",
+            featureidkey="properties.area_key",
+            color="winner_party_display",
+            color_discrete_map=color_map,
+            hover_name="area_name",
+            hover_data=base_hover,
+            map_style="dark",
+            center=center,
+            zoom=zoom,
+            opacity=0.82,
+            title=f"Election Winner by {area_level}",
+        )
+    else:
+        metric_map = {
+            "Turnout %": ("turnout_pct", "Turnout %"),
+            "Victory margin %": ("margin_pct", "Victory margin %"),
+            "Total votes": ("total_votes", "Total votes"),
+        }
+        color_col, title = metric_map[metric]
+        valid = map_df[map_df["has_votes"] & map_df[color_col].notna()].copy()
+        if valid.empty:
+            fig = go.Figure()
+        else:
+            fig = px.choropleth_map(
+                valid,
+                geojson=filter_geojson_features(visible_geojson, valid["area_key"]),
+                locations="area_key",
+                featureidkey="properties.area_key",
+                color=color_col,
+                color_continuous_scale=[PANEL_BG, LIGHT_OG, ORANGE],
+                hover_name="area_name",
+                hover_data=base_hover,
+                map_style="dark",
+                center=center,
+                zoom=zoom,
+                opacity=0.84,
+                title=f"{title} by {area_level}",
+            )
+            fig.update_layout(coloraxis_colorbar=dict(title=title))
+        no_data = map_df[~map_df["has_votes"]]
+        if not no_data.empty:
+            fig.add_trace(go.Choroplethmap(
+                geojson=filter_geojson_features(visible_geojson, no_data["area_key"]),
+                locations=no_data["area_key"],
+                featureidkey="properties.area_key",
+                z=[0] * len(no_data),
+                colorscale=[[0, MUTED], [1, MUTED]],
+                showscale=False,
+                marker_opacity=0.42,
+                marker_line_color="rgba(255,255,255,0.38)",
+                marker_line_width=1,
+                text=no_data["area_name"],
+                hovertemplate="<b>%{text}</b><br>No vote rows in current scope<extra></extra>",
+                name="No data",
+            ))
+
+    fig.update_traces(marker_line_color="rgba(255,255,255,0.42)", marker_line_width=1)
+    fig.update_layout(
+        paper_bgcolor=CHART_BG,
+        plot_bgcolor=CHART_BG,
+        font_color=WHITE,
+        title_font_color=WHITE,
+        height=620,
+        margin=dict(l=8, r=8, t=54, b=8),
+        hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
+        legend=dict(
+            title_text="Winner party",
+            font=dict(color=WHITE, size=11),
+            title_font_color=WHITE,
+            bgcolor="rgba(11,13,18,0.72)",
+            bordercolor=BORDER,
+            borderwidth=1,
+            x=0.01,
+            y=0.99,
+        ),
+        map=dict(
+            style="dark",
+            center=center,
+            zoom=zoom,
+        ),
+    )
+    return fig
+
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
@@ -774,10 +1075,92 @@ st.markdown(f"""
 st.divider()
 
 # ── Tabs ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "Turnout", "Candidates", "Parties", "Split Vote",
+tab_map, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    "Map", "Turnout", "Candidates", "Parties", "Split Vote",
     "Station Size", "Versions", "Quality", "Missing"
 ])
+
+
+# ─────────────────────────── TAB 0 · MAP ──────────────────────────────────────
+with tab_map:
+    st.subheader("Election Map")
+
+    if ver == "V3":
+        st.info("V3 is a constituency-level reference total. Use V1, V2, or V4 for area-level maps.")
+    else:
+        ctrl_a, ctrl_b, ctrl_c = st.columns(3)
+        with ctrl_a:
+            area_level = st.selectbox(
+                "Area level",
+                ["Sub-district", "District"],
+                key="map_area_level",
+            )
+        with ctrl_b:
+            vote_type = st.selectbox(
+                "Vote type",
+                ["Party-list", "Constituency"],
+                key="map_vote_type",
+            )
+        with ctrl_c:
+            map_metric = st.selectbox(
+                "Map metric",
+                ["Winner", "Turnout %", "Victory margin %", "Total votes"],
+                key="map_metric",
+            )
+
+        geojson_path = SUBDISTRICT_GEOJSON if area_level == "Sub-district" else DISTRICT_GEOJSON
+        geojson = load_geojson(str(geojson_path))
+        vote_source = apv if vote_type == "Party-list" else av
+        map_df = prepare_map_data(
+            f_st, vote_source, geojson, area_level, sel_district, sel_sub, vote_type
+        )
+
+        if map_df.empty:
+            empty_state(
+                "No map areas match the selected filters",
+                "Try selecting All for District or Sub-district.",
+            )
+        else:
+            fig = build_map_figure(map_df, geojson, area_level, map_metric)
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+
+            st.caption(
+                "Map areas use local GeoJSON boundaries. Grey areas have no vote rows in the current filter scope."
+            )
+            table_cols = [
+                "area_name", "district", "subdistrict", "stations", "turnout_pct",
+                "winner", "winner_votes", "runner_up", "runner_up_votes",
+                "margin_votes", "margin_pct", "total_votes",
+            ]
+            if area_level == "District":
+                table_cols.remove("subdistrict")
+            map_table = (
+                map_df[table_cols]
+                .rename(columns={
+                    "area_name": "Area",
+                    "district": "District",
+                    "subdistrict": "Sub-district",
+                    "stations": "Stations",
+                    "turnout_pct": "Turnout %",
+                    "winner": "Winner",
+                    "winner_votes": "Winner Votes",
+                    "runner_up": "Runner-up",
+                    "runner_up_votes": "Runner-up Votes",
+                    "margin_votes": "Margin",
+                    "margin_pct": "Margin %",
+                    "total_votes": "Total Votes",
+                })
+            )
+            for col in ["Winner Votes", "Runner-up Votes", "Margin", "Total Votes"]:
+                map_table[col] = map_table[col].round(0).astype(int)
+            for col in ["Turnout %", "Margin %"]:
+                map_table[col] = map_table[col].round(2)
+
+            st.dataframe(
+                map_table,
+                width="stretch",
+                hide_index=True,
+            )
 
 
 # ─────────────────────────── TAB 1 · TURNOUT ──────────────────────────────────
