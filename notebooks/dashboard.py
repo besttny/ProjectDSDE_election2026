@@ -94,6 +94,7 @@ PARTY_COLORS = {
     "ไทยรวมไทย": "#3949AB",
     "เพื่อบ้านเมือง": "#C46A45",
     "พลังไทยรักชาติ": "#F2C94C",
+    "ก้าวไกล": "#F05A28",
 }
 
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
@@ -115,6 +116,10 @@ st.markdown(f"""
         radial-gradient(circle at top right, rgba(61,214,198,0.10), transparent 30rem),
         linear-gradient(180deg, #0B0D12 0%, #0E1219 48%, #0B0D12 100%);
       color: var(--text);
+  }}
+  .js-plotly-plot .annotation-text-g rect.bg {{
+      rx: 6px;
+      ry: 6px;
   }}
   .block-container {{
       padding-top: 1.2rem;
@@ -698,6 +703,124 @@ def party_color_map(names):
         str(name): party_color(name)
         for name in pd.Series(names).dropna().unique()
     }
+
+
+def party_label_color(name):
+    value = str(name).strip()
+    if value in PARTY_COLORS:
+        return PARTY_COLORS[value]
+    if "→" in value:
+        value = value.split("→")[-1].strip()
+        if value in PARTY_COLORS:
+            return PARTY_COLORS[value]
+    if "/" in value:
+        for part in reversed(value.split("/")):
+            part = part.strip()
+            if part in PARTY_COLORS:
+                return PARTY_COLORS[part]
+    return fallback_party_color(value)
+
+
+def readable_text_color(bg_color):
+    color = str(bg_color).strip().lstrip("#")
+    if len(color) != 6:
+        return WHITE
+    try:
+        r, g, b = (int(color[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return WHITE
+    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return BG if luminance > 0.58 else WHITE
+
+
+def add_party_axis_chips(fig, labels, xshift=-10, font_size=11):
+    seen = []
+    for label in pd.Series(labels).dropna().astype(str):
+        if label not in seen:
+            seen.append(label)
+    for label in seen:
+        color = party_label_color(label)
+        fig.add_annotation(
+            xref="paper",
+            x=0,
+            xshift=xshift,
+            xanchor="right",
+            yref="y",
+            y=label,
+            text=html.escape(label),
+            showarrow=False,
+            align="right",
+            bgcolor=color,
+            bordercolor=color,
+            borderpad=4,
+            font=dict(color=readable_text_color(color), size=font_size),
+        )
+    fig.update_yaxes(showticklabels=False)
+    return fig
+
+
+def add_candidate_party_labels(fig, rows):
+    for row in rows.drop_duplicates("candidate_label").itertuples(index=False):
+        fig.add_annotation(
+            xref="paper",
+            x=0,
+            xshift=-300,
+            xanchor="right",
+            yref="y",
+            y=row.candidate_label,
+            text=html.escape(str(row.candidate_name)),
+            showarrow=False,
+            align="right",
+            font=dict(color=WHITE, size=12),
+        )
+        party_2023 = str(row.party_name_2023)
+        party_2026 = str(row.party_name_2026)
+        color_2023 = party_label_color(party_2023)
+        color_2026 = party_label_color(party_2026)
+        fig.add_annotation(
+            xref="paper",
+            x=0,
+            xshift=-172,
+            xanchor="right",
+            yref="y",
+            y=row.candidate_label,
+            text=html.escape(party_2023),
+            showarrow=False,
+            align="center",
+            bgcolor=color_2023,
+            bordercolor=color_2023,
+            borderpad=4,
+            font=dict(color=readable_text_color(color_2023), size=11),
+        )
+        fig.add_annotation(
+            xref="paper",
+            x=0,
+            xshift=-146,
+            xanchor="center",
+            yref="y",
+            y=row.candidate_label,
+            text="→",
+            showarrow=False,
+            align="center",
+            font=dict(color=LGRAY, size=14),
+        )
+        fig.add_annotation(
+            xref="paper",
+            x=0,
+            xshift=-120,
+            xanchor="left",
+            yref="y",
+            y=row.candidate_label,
+            text=html.escape(party_2026),
+            showarrow=False,
+            align="center",
+            bgcolor=color_2026,
+            bordercolor=color_2026,
+            borderpad=4,
+            font=dict(color=readable_text_color(color_2026), size=11),
+        )
+    fig.update_yaxes(showticklabels=False)
+    return fig
 
 
 def styled_party_bar(df, x, y, title, height=400):
@@ -2217,9 +2340,10 @@ with tab66:
                 candidate_compare["share_2023"] = candidate_compare["votes_2023"] / candidate_total_2023 * 100
             if candidate_total_2026 > 0:
                 candidate_compare["share_2026"] = candidate_compare["votes_2026"] / candidate_total_2026 * 100
-            candidate_compare["candidate_label"] = (
-                candidate_compare["candidate_name"] + " · "
-                + candidate_compare["party_name_2023"].astype(str) + " → "
+            candidate_compare["candidate_label"] = candidate_compare["candidate_name"].astype(str)
+            candidate_compare["party_transition"] = (
+                candidate_compare["party_name_2023"].astype(str)
+                + " → "
                 + candidate_compare["party_name_2026"].astype(str)
             )
             candidate_compare = candidate_compare.sort_values("votes_2026", ascending=False)
@@ -2235,7 +2359,10 @@ with tab66:
             candidate_year_2026 = f"2026 {ver}"
 
             candidate_long = candidate_compare.melt(
-                id_vars=["candidate_label"],
+                id_vars=[
+                    "candidate_label", "candidate_name", "party_name_2023",
+                    "party_name_2026", "party_transition",
+                ],
                 value_vars=["votes_2023", "votes_2026"],
                 var_name="Year",
                 value_name="Votes",
@@ -2247,7 +2374,10 @@ with tab66:
 
             candidate_share_long = (
                 candidate_compare.melt(
-                    id_vars=["candidate_label"],
+                    id_vars=[
+                        "candidate_label", "candidate_name", "party_name_2023",
+                        "party_name_2026", "party_transition",
+                    ],
                     value_vars=["share_2023", "share_2026"],
                     var_name="Year",
                     value_name="Vote share %",
@@ -2271,13 +2401,19 @@ with tab66:
                     range=percent_axis_range(candidate_plot["Vote share %"]),
                     automargin=True,
                 )
-                candidate_hover = "%{y}<br>%{fullData.name}: <b>%{x:.2f}%</b><extra></extra>"
+                candidate_hover = (
+                    "%{customdata[0]}<br>%{customdata[1]}"
+                    "<br>%{fullData.name}: <b>%{x:.2f}%</b><extra></extra>"
+                )
             else:
                 candidate_plot = candidate_long
                 candidate_x = "Votes"
                 candidate_title = "Constituency Votes by Same Candidate"
                 candidate_xaxis = dict(gridcolor=GRID, zeroline=False, title="Votes", automargin=True)
-                candidate_hover = "%{y}<br>%{fullData.name}: <b>%{x:,.0f}</b><extra></extra>"
+                candidate_hover = (
+                    "%{customdata[0]}<br>%{customdata[1]}"
+                    "<br>%{fullData.name}: <b>%{x:,.0f}</b><extra></extra>"
+                )
 
             if not candidate_plot.empty:
                 fig = px.bar(
@@ -2285,6 +2421,7 @@ with tab66:
                     x=candidate_x,
                     y="candidate_label",
                     color="Year",
+                    custom_data=["candidate_name", "party_transition"],
                     orientation="h",
                     barmode="group",
                     category_orders={"Year": [candidate_year_2026, "2023"]},
@@ -2298,9 +2435,10 @@ with tab66:
                     yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
                     legend=right_side_legend(traceorder="reversed"),
                     height=430,
-                    margin=dict(l=8, r=150, t=54, b=42),
+                    margin=dict(l=540, r=150, t=54, b=42),
                     hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
                 )
+                add_candidate_party_labels(fig, candidate_compare)
                 fig.update_traces(hovertemplate=candidate_hover)
                 st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
@@ -2400,9 +2538,10 @@ with tab66:
                     yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
                     legend=right_side_legend(traceorder="reversed"),
                     height=430,
-                    margin=dict(l=8, r=150, t=54, b=42),
+                    margin=dict(l=190, r=150, t=54, b=42),
                     hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
                 )
+                add_party_axis_chips(fig_party, candidate_party_long["Party"])
                 fig_party.update_traces(hovertemplate=party_hover)
                 st.plotly_chart(fig_party, width="stretch", config=PLOTLY_CONFIG)
 
@@ -2514,9 +2653,10 @@ with tab66:
                 yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
                 legend=right_side_legend(traceorder="reversed"),
                 height=max(520, int(top_n_66) * 34 + 190),
-                margin=dict(l=8, r=150, t=54, b=42),
+                margin=dict(l=190, r=150, t=54, b=42),
                 hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
             )
+            add_party_axis_chips(fig2, party_long["Party"])
             fig2.update_traces(hovertemplate=party_hover)
             st.plotly_chart(fig2, width="stretch", config=PLOTLY_CONFIG)
 
