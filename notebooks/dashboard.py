@@ -1,5 +1,6 @@
 import json
 import html
+import hashlib
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -278,6 +279,7 @@ st.markdown(f"""
   h2, h3 {{ margin-top: 0.7rem !important; }}
   /* Sidebar select labels */
   .stSelectbox > label, .stSlider > label {{ color: {LGRAY} !important; }}
+  .control-spacer {{ height: 1.72rem; }}
   div[data-baseweb="select"] > div,
   div[data-baseweb="select"] > div:hover,
   div[data-baseweb="select"] > div:focus,
@@ -835,6 +837,34 @@ PLOTLY_CONFIG = {
     "responsive": True,
     "modeBarButtonsToRemove": ["lasso2d", "select2d"],
 }
+
+
+def ensure_reset_token(token_key):
+    if token_key not in st.session_state:
+        st.session_state[token_key] = 0
+    return st.session_state[token_key]
+
+
+def reset_map_button(token_key, button_key):
+    ensure_reset_token(token_key)
+    st.markdown("<div class='control-spacer'></div>", unsafe_allow_html=True)
+    if st.button("Reset map", key=button_key, use_container_width=True):
+        st.session_state[token_key] += 1
+    return st.session_state[token_key]
+
+
+def plot_resettable_map(fig, base_key, token_key, scope_parts):
+    token = ensure_reset_token(token_key)
+    scope_key = hashlib.md5(
+        "|".join(str(part) for part in scope_parts).encode("utf-8")
+    ).hexdigest()[:12]
+    fig.update_layout(uirevision=f"{base_key}-{token}-{scope_key}")
+    st.plotly_chart(
+        fig,
+        width="stretch",
+        config=PLOTLY_CONFIG,
+        key=f"{base_key}_{token}_{scope_key}",
+    )
 
 
 def empty_state(title, body):
@@ -1874,7 +1904,10 @@ with tab_map:
     if ver == "V3":
         st.info("V3 is a constituency-level reference total. Use V1, V2, or V4 for area-level maps.")
     else:
-        ctrl_a, ctrl_b, ctrl_c = st.columns(3)
+        if "map_reset_token" not in st.session_state:
+            st.session_state["map_reset_token"] = 0
+
+        ctrl_a, ctrl_b, ctrl_c, ctrl_d = st.columns([1, 1, 1, 0.55])
         with ctrl_a:
             area_level = st.selectbox(
                 "Area level",
@@ -1893,6 +1926,10 @@ with tab_map:
                 ["Winner", "Turnout %", "Victory margin %", "Total votes"],
                 key="map_metric",
             )
+        with ctrl_d:
+            st.markdown("<div class='control-spacer'></div>", unsafe_allow_html=True)
+            if st.button("Reset map", key="map_reset_button", use_container_width=True):
+                st.session_state["map_reset_token"] += 1
 
         geojson_path = SUBDISTRICT_GEOJSON if area_level == "Sub-district" else DISTRICT_GEOJSON
         geojson = load_geojson(str(geojson_path))
@@ -1908,7 +1945,23 @@ with tab_map:
             )
         else:
             fig = build_map_figure(map_df, geojson, area_level, map_metric)
-            st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+            map_scope_key = hashlib.md5(
+                "|".join([
+                    str(area_level),
+                    str(vote_type),
+                    str(map_metric),
+                    str(ver),
+                    str(sel_district),
+                    str(sel_sub),
+                ]).encode("utf-8")
+            ).hexdigest()[:12]
+            fig.update_layout(uirevision=f"map-{st.session_state['map_reset_token']}-{map_scope_key}")
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                config=PLOTLY_CONFIG,
+                key=f"election_map_{st.session_state['map_reset_token']}_{map_scope_key}",
+            )
 
             st.caption(
                 "Map areas use local GeoJSON boundaries. Grey areas have no vote rows in the current filter scope."
@@ -2281,9 +2334,10 @@ with tab4:
             yaxis=dict(gridcolor=GRID, categoryorder="total ascending", zeroline=False, title="", automargin=True),
             legend=right_side_legend(),
             height=430,
-            margin=dict(l=8, r=160, t=46, b=36),
+            margin=dict(l=190, r=160, t=46, b=36),
             hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
         )
+        add_party_axis_chips(fig, split["Party"])
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
         st.caption(
@@ -2753,13 +2807,15 @@ with tab_adv:
                 metric_c.metric("Max score", f"{max_score:.1f}")
                 metric_d.metric("Average score", f"{avg_score:.1f}")
 
-                ctrl_a, ctrl_b = st.columns([1, 3])
+                ctrl_a, ctrl_b, ctrl_c = st.columns([1, 0.55, 2.45])
                 with ctrl_a:
                     anomaly_area_level = st.selectbox(
                         "Outlier map level",
                         ["Sub-district", "District"],
                         key="advanced_anomaly_area_level",
                     )
+                with ctrl_b:
+                    reset_map_button("advanced_anomaly_reset_token", "advanced_anomaly_reset_button")
 
                 geojson_path = SUBDISTRICT_GEOJSON if anomaly_area_level == "Sub-district" else DISTRICT_GEOJSON
                 anomaly_geojson = load_geojson(str(geojson_path))
@@ -2773,7 +2829,12 @@ with tab_adv:
                     "Review score",
                     color_scale=[PANEL_BG, LIGHT_OG, ORANGE, "#F87171"],
                 )
-                st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+                plot_resettable_map(
+                    fig,
+                    "advanced_anomaly_map",
+                    "advanced_anomaly_reset_token",
+                    [anomaly_area_level, ver, sel_district, sel_sub],
+                )
 
                 feature_cols = [
                     "turnout_pct", "spoiled_pct", "no_vote_pct",
@@ -2878,7 +2939,7 @@ with tab_adv:
                 )
                 st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
-                map_ctrl_a, map_ctrl_b = st.columns([1, 2])
+                map_ctrl_a, map_ctrl_b, map_ctrl_c = st.columns([1, 2, 0.55])
                 with map_ctrl_a:
                     personal_area_level = st.selectbox(
                         "Personal vote map level",
@@ -2892,6 +2953,8 @@ with tab_adv:
                         party_options,
                         key="advanced_personal_party",
                     )
+                with map_ctrl_c:
+                    reset_map_button("advanced_personal_reset_token", "advanced_personal_reset_button")
 
                 personal_area = prepare_party_area_index(av, apv, personal_area_level)
                 if personal_area.empty:
@@ -2918,7 +2981,12 @@ with tab_adv:
                         color_scale=["#67A6FF", PANEL_BG, ORANGE],
                         midpoint=0,
                     )
-                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+                    plot_resettable_map(
+                        fig_map,
+                        "advanced_personal_map",
+                        "advanced_personal_reset_token",
+                        [personal_area_level, personal_party, ver, sel_district, sel_sub],
+                    )
 
                     personal_table = (
                         personal_area.sort_values("abs_personal_vote_index_pp", ascending=False)
@@ -3020,7 +3088,7 @@ with tab_adv:
                     )
                     st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
-                    ctrl_a, ctrl_b = st.columns([1, 2])
+                    ctrl_a, ctrl_b, ctrl_c = st.columns([1, 2, 0.55])
                     with ctrl_a:
                         swing_area_level = st.selectbox(
                             "Swing map level",
@@ -3038,6 +3106,8 @@ with tab_adv:
                             list(party_label_to_key.keys()),
                             key="advanced_swing_party",
                         )
+                    with ctrl_c:
+                        reset_map_button("advanced_swing_reset_token", "advanced_swing_reset_button")
                     swing_party_key = party_label_to_key[swing_party_label]
 
                     swing_area = prepare_party_swing(
@@ -3067,7 +3137,12 @@ with tab_adv:
                             color_scale=["#67A6FF", PANEL_BG, ORANGE],
                             midpoint=0,
                         )
-                        st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+                        plot_resettable_map(
+                            fig_map,
+                            "advanced_swing_map",
+                            "advanced_swing_reset_token",
+                            [swing_area_level, swing_party_key, ver, sel_district, sel_sub],
+                        )
 
                         swing_table = (
                             swing_area.sort_values("swing_pp", ascending=False)
@@ -3109,7 +3184,7 @@ with tab_adv:
                 if not party_options:
                     party_options = ["No party-list rows"]
 
-                ctrl_a, ctrl_b, ctrl_c = st.columns([1, 1, 2])
+                ctrl_a, ctrl_b, ctrl_c, ctrl_d = st.columns([1, 1, 2, 0.55])
                 with ctrl_a:
                     hotspot_area_level = st.selectbox(
                         "Hotspot map level",
@@ -3128,6 +3203,8 @@ with tab_adv:
                         party_options,
                         key="advanced_hotspot_party",
                     )
+                with ctrl_d:
+                    reset_map_button("advanced_hotspot_reset_token", "advanced_hotspot_reset_button")
 
                 hotspot_df = prepare_current_area_hotspots(
                     f_st,
@@ -3167,7 +3244,12 @@ with tab_adv:
                         color_scale=color_scale,
                         midpoint=midpoint,
                     )
-                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+                    plot_resettable_map(
+                        fig_map,
+                        "advanced_hotspot_map",
+                        "advanced_hotspot_reset_token",
+                        [hotspot_area_level, hotspot_metric, hotspot_party, ver, sel_district, sel_sub],
+                    )
 
                     geo_names = geojson_area_frame(hotspot_geojson, hotspot_area_level)
                     hotspot_table = (
@@ -3217,13 +3299,15 @@ with tab_adv:
                     "This insight needs both constituency and party-list vote rows.",
                 )
             else:
-                ctrl_a, ctrl_b = st.columns([1, 3])
+                ctrl_a, ctrl_b, ctrl_c = st.columns([1, 0.55, 2.45])
                 with ctrl_a:
                     mismatch_area_level = st.selectbox(
                         "Mismatch map level",
                         ["Sub-district", "District"],
                         key="advanced_mismatch_area_level",
                     )
+                with ctrl_b:
+                    reset_map_button("advanced_mismatch_reset_token", "advanced_mismatch_reset_button")
 
                 cand_winners = aggregate_vote_map(av, mismatch_area_level, "Constituency")
                 party_winners = aggregate_vote_map(apv, mismatch_area_level, "Party-list")
@@ -3307,7 +3391,12 @@ with tab_adv:
                         "Mismatch score",
                         color_scale=[PANEL_BG, LIGHT_OG, ORANGE, "#F87171"],
                     )
-                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_CONFIG)
+                    plot_resettable_map(
+                        fig_map,
+                        "advanced_mismatch_map",
+                        "advanced_mismatch_reset_token",
+                        [mismatch_area_level, ver, sel_district, sel_sub],
+                    )
 
                     geo_names = geojson_area_frame(mismatch_geojson, mismatch_area_level)
                     mismatch_table = (
