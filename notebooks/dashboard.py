@@ -31,6 +31,11 @@ LGRAY      = "#A7B0C0"
 MUTED      = "#697386"
 GRID       = "#263041"
 CHART_BG   = "rgba(0,0,0,0)"
+MAP_CENTER = {"lat": 15.68, "lon": 101.84}
+MAP_ZOOM_DISTRICT = 8.55
+MAP_ZOOM_SUBDISTRICT = 8.85
+MAP_HEIGHT = 680
+ADVANCED_MAP_HEIGHT = 620
 PALETTE    = [ORANGE, TEAL, LIGHT_OG, VIOLET, "#67A6FF",
               "#F87171", "#34D399", "#C084FC", "#FACC15", "#FB7185"]
 PARTY_FALLBACK_PALETTE = [
@@ -1173,8 +1178,8 @@ def prepare_map_data(stations, votes, geojson, area_level, district, subdistrict
 
 def build_map_figure(map_df, geojson, area_level, metric):
     visible_geojson = filter_geojson_features(geojson, map_df["area_key"])
-    center = {"lat": 15.74, "lon": 101.92}
-    zoom = 8.0 if area_level == "District" else 8.4
+    center = MAP_CENTER.copy()
+    zoom = MAP_ZOOM_DISTRICT if area_level == "District" else MAP_ZOOM_SUBDISTRICT
     base_hover = {
         "area_key": False,
         "winner_party": False,
@@ -1267,7 +1272,7 @@ def build_map_figure(map_df, geojson, area_level, metric):
         plot_bgcolor=CHART_BG,
         font_color=WHITE,
         title_font_color=WHITE,
-        height=620,
+        height=MAP_HEIGHT,
         margin=dict(l=8, r=8, t=54, b=8),
         hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
         legend=dict(
@@ -1522,6 +1527,8 @@ def aggregate_anomaly_area(anomaly_df, area_level):
 
 
 def build_area_metric_map(area_df, geojson, area_level, color_col, title, colorbar_title, color_scale=None, midpoint=None):
+    center = MAP_CENTER.copy()
+    zoom = MAP_ZOOM_DISTRICT if area_level == "District" else MAP_ZOOM_SUBDISTRICT
     geo_df = geojson_area_frame(geojson, area_level)
     area_values = area_df.copy()
     for col in ["district", "subdistrict", "area_name"]:
@@ -1555,8 +1562,8 @@ def build_area_metric_map(area_df, geojson, area_level, color_col, title, colorb
             "flagged_stations": ":,.0f" if "flagged_stations" in map_df.columns else False,
         },
         map_style="dark",
-        center={"lat": 15.74, "lon": 101.92},
-        zoom=8.0 if area_level == "District" else 8.4,
+        center=center,
+        zoom=zoom,
         opacity=0.84,
         title=title,
     )
@@ -1566,11 +1573,11 @@ def build_area_metric_map(area_df, geojson, area_level, color_col, title, colorb
         plot_bgcolor=CHART_BG,
         font_color=WHITE,
         title_font_color=WHITE,
-        height=560,
+        height=ADVANCED_MAP_HEIGHT,
         margin=dict(l=8, r=8, t=54, b=8),
         coloraxis_colorbar=dict(title=colorbar_title),
         hoverlabel=dict(bgcolor=PANEL_BG, font_color=WHITE, bordercolor=BORDER),
-        map=dict(style="dark", center={"lat": 15.74, "lon": 101.92}, zoom=8.0 if area_level == "District" else 8.4),
+        map=dict(style="dark", center=center, zoom=zoom),
     )
     return fig, map_df
 
